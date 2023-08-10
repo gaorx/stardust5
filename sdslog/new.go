@@ -30,13 +30,13 @@ func Must(opts *Options) *slog.Logger {
 func New(opts *Options) (*slog.Logger, error) {
 	opts1 := lo.FromPtr(opts)
 
-	w, err := newWriter(opts.Outputs)
+	w, err := newWriter(opts1.Outputs)
 	if err != nil {
 		return nil, sderr.WithStack(err)
 	}
 
 	slogOpts := &slog.HandlerOptions{AddSource: opts1.AddSource}
-	switch opts.Format {
+	switch opts1.Format {
 	case "", Text:
 		return slog.New(slog.NewTextHandler(w, slogOpts)), nil
 	case Json:
