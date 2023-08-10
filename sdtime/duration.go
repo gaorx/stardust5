@@ -4,7 +4,7 @@ import (
 	"time"
 )
 
-func Millis(n int64) time.Duration {
+func Milliseconds(n int64) time.Duration {
 	return time.Duration(n) * time.Millisecond
 }
 

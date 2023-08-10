@@ -10,6 +10,6 @@ func TestUnix(t *testing.T) {
 	nowS := NowUnixS()
 	assert.Equal(t, nowS, ToUnixS(FromUnixS(nowS)))
 
-	nowMs := NowUnixMillis()
-	assert.Equal(t, nowMs, ToUnixMillis(FromUnixMillis(nowMs)))
+	nowMs := NowUnixMs()
+	assert.Equal(t, nowMs, ToUnixMs(FromUnixMs(nowMs)))
 }

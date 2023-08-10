@@ -12,6 +12,6 @@ func SleepS(n int64) {
 	time.Sleep(Seconds(n))
 }
 
-func SleepMillis(n int64) {
-	time.Sleep(Millis(n))
+func SleepMs(n int64) {
+	time.Sleep(Milliseconds(n))
 }
