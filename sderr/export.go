@@ -3,6 +3,7 @@ package sderr
 import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/rotisserie/eris"
+	"github.com/samber/lo"
 )
 
 // export types
@@ -17,7 +18,7 @@ var (
 	Unwrap = eris.Unwrap
 	Cause  = eris.Cause
 	Is     = eris.Is
-	Try    = eris.As
+	As     = eris.As
 
 	// multiple
 	Append = multierror.Append
@@ -35,13 +36,8 @@ func WithStack(err error) error {
 	return Wrap(err, "")
 }
 
-func TryT[E error](err error) (E, bool) {
-	var e E
-	if Try(err, &e) {
-		return e, true
-	} else {
-		return e, false
-	}
+func AsT[E error](err error) (E, bool) {
+	return lo.ErrorsAs[E](err)
 }
 
 func AsErr(v any) error {
