@@ -13,7 +13,7 @@ func ToUnixS(t time.Time) int64 {
 	return t.Unix()
 }
 
-func ToUnixMs(t time.Time) int64 {
+func ToUnixMS(t time.Time) int64 {
 	if t.IsZero() {
 		return 0
 	}
@@ -29,7 +29,7 @@ func FromUnixS(s int64) time.Time {
 	return time.Unix(s, 0)
 }
 
-func FromUnixMs(ms int64) time.Time {
+func FromUnixMS(ms int64) time.Time {
 	if ms == 0 {
 		return time.Time{}
 	}
@@ -43,6 +43,6 @@ func NowUnixS() int64 {
 	return ToUnixS(time.Now())
 }
 
-func NowUnixMs() int64 {
-	return ToUnixMs(time.Now())
+func NowUnixMS() int64 {
+	return ToUnixMS(time.Now())
 }

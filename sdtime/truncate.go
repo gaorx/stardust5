@@ -12,6 +12,6 @@ func NowTruncateS() time.Time {
 	return time.Now().Truncate(time.Second)
 }
 
-func NowTruncateMs() time.Time {
+func NowTruncateMS() time.Time {
 	return time.Now().Truncate(time.Millisecond)
 }
