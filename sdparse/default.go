@@ -2,34 +2,60 @@ package sdparse
 
 import (
 	"time"
-
-	"github.com/samber/mo"
 )
 
 func Int64Def(s string, def int64) int64 {
-	return mo.TupleToResult(Int64(s)).OrElse(def)
+	r, err := Int64(s)
+	if err != nil {
+		return def
+	}
+	return r
 }
 
 func IntDef(s string, def int) int {
-	return mo.TupleToResult(Int(s)).OrElse(def)
+	r, err := Int(s)
+	if err != nil {
+		return def
+	}
+	return r
 }
 
 func Uint64Def(s string, def uint64) uint64 {
-	return mo.TupleToResult(Uint64(s)).OrElse(def)
+	r, err := Uint64(s)
+	if err != nil {
+		return def
+	}
+	return r
 }
 
 func UintDef(s string, def uint) uint {
-	return mo.TupleToResult(Uint(s)).OrElse(def)
+	r, err := Uint(s)
+	if err != nil {
+		return def
+	}
+	return r
 }
 
 func Float64Def(s string, def float64) float64 {
-	return mo.TupleToResult(Float64(s)).OrElse(def)
+	r, err := Float64(s)
+	if err != nil {
+		return def
+	}
+	return r
 }
 
 func BoolDef(s string, def bool) bool {
-	return mo.TupleToResult(Bool(s)).OrElse(def)
+	r, err := Bool(s)
+	if err != nil {
+		return def
+	}
+	return r
 }
 
 func TimeDef(s string, def time.Time) time.Time {
-	return mo.TupleToResult(Time(s)).OrElse(def)
+	r, err := Time(s)
+	if err != nil {
+		return def
+	}
+	return r
 }

@@ -1,2 +1,2 @@
-// 错误处理
+// Package sderr 错误处理
 package sderr

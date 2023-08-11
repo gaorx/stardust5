@@ -23,10 +23,6 @@ type Options struct {
 	AddSource bool     `json:"add_source" toml:"add_source" yaml:"add_source"`
 }
 
-func Must(opts *Options) *slog.Logger {
-	return lo.Must(New(opts))
-}
-
 func New(opts *Options) (*slog.Logger, error) {
 	opts1 := lo.FromPtr(opts)
 

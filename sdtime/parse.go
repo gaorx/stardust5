@@ -5,7 +5,6 @@ import (
 )
 
 var (
-	Parse     = sdparse.Time
-	ParseDef  = sdparse.TimeDef
-	MustParse = sdparse.MustTime
+	Parse    = sdparse.Time
+	ParseDef = sdparse.TimeDef
 )
