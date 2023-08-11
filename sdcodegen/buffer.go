@@ -35,15 +35,16 @@ const (
 	C = Action("create")
 )
 
-func NewBuffer(opts BufferOptions) *Buffer {
-	if opts.Newline == "" {
-		opts.Newline = "\n"
+func NewBuffer(opts *BufferOptions) *Buffer {
+	opts1 := lo.FromPtr(opts)
+	if opts1.Newline == "" {
+		opts1.Newline = "\n"
 	}
-	if opts.Indent == "" {
-		opts.Indent = "  "
+	if opts1.Indent == "" {
+		opts1.Indent = "  "
 	}
 	return &Buffer{
-		options:   opts,
+		options:   opts1,
 		overwrite: true,
 	}
 }
@@ -137,7 +138,7 @@ func (b *Buffer) expandPlaceholders() *Buffer {
 	for _, p0 := range b.placeholders {
 		expanded := ""
 		if p0.Expand != nil {
-			expandedBuff := NewBuffer(b.options)
+			expandedBuff := NewBuffer(&b.options)
 			p0.Expand(expandedBuff, p0.Data)
 			expanded = expandedBuff.String()
 		} else {

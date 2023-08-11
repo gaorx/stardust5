@@ -7,6 +7,7 @@ import (
 	stringadapter "github.com/casbin/casbin/v2/persist/string-adapter"
 	"github.com/gaorx/stardust5/sderr"
 	"github.com/gaorx/stardust5/sdstrings"
+	"github.com/samber/lo"
 	"strings"
 )
 
@@ -35,9 +36,10 @@ type builderEntry struct {
 	v1, v2, v3 string
 }
 
-func NewRbacEnforcerBuilder(opts RbacEnforcerBuilderOptions) *RbacEnforcerBuilder {
+func NewRbacEnforcerBuilder(opts *RbacEnforcerBuilderOptions) *RbacEnforcerBuilder {
+	opts1 := lo.FromPtr(opts)
 	return &RbacEnforcerBuilder{
-		options:   opts,
+		options:   opts1,
 		userIds:   newIdSet(),
 		roleIds:   newIdSet(),
 		objectIds: newIdSet(),

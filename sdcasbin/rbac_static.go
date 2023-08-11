@@ -13,7 +13,7 @@ type StaticRbac struct {
 
 var _ Rbac = &StaticRbac{}
 
-func NewStaticRbac(loaders []RbacLoader, enforcerBuilderOpts RbacEnforcerBuilderOptions) (*StaticRbac, error) {
+func NewStaticRbac(loaders []RbacLoader, enforcerBuilderOpts *RbacEnforcerBuilderOptions) (*StaticRbac, error) {
 	b := NewRbacEnforcerBuilder(enforcerBuilderOpts)
 	if len(loaders) > 0 {
 		if ok := lo.Try0(func() {
@@ -32,7 +32,7 @@ func NewStaticRbac(loaders []RbacLoader, enforcerBuilderOpts RbacEnforcerBuilder
 	}, nil
 }
 
-func NewStaticRbacWithFunc(f func(b *RbacEnforcerBuilder), enforcerBuilderOpts RbacEnforcerBuilderOptions) (*StaticRbac, error) {
+func NewStaticRbacWithFunc(f func(b *RbacEnforcerBuilder), enforcerBuilderOpts *RbacEnforcerBuilderOptions) (*StaticRbac, error) {
 	return NewStaticRbac([]RbacLoader{RbacLoaderFunc(f)}, enforcerBuilderOpts)
 }
 

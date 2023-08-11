@@ -15,7 +15,7 @@ type ReloadableRbac struct {
 	polices               string
 	loaders               []RbacLoader
 	loaderFactories       []RbacLoaderFactory
-	enforceBuilderOptions RbacEnforcerBuilderOptions
+	enforceBuilderOptions *RbacEnforcerBuilderOptions
 }
 
 var _ Rbac = &ReloadableRbac{}
@@ -23,7 +23,7 @@ var _ Rbac = &ReloadableRbac{}
 func NewReloadableRbac(
 	loaders []RbacLoader,
 	loadFactories []RbacLoaderFactory,
-	enforcerBuilderOpts RbacEnforcerBuilderOptions,
+	enforcerBuilderOpts *RbacEnforcerBuilderOptions,
 ) *ReloadableRbac {
 	return &ReloadableRbac{
 		enforcer:              lo.Must(NewRbacEnforcerBuilder(enforcerBuilderOpts).Build()),

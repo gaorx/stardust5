@@ -136,33 +136,33 @@ func (bs *Buffers) open(filename string) (*Buffer, error) {
 	return buff, nil
 }
 
-func getBufferOptions(filename string) BufferOptions {
+func getBufferOptions(filename string) *BufferOptions {
 	const newline = "\n"
 	base := filepath.Base(filename)
 	if base == "Makefile" || base == "Makefile.in" {
-		return BufferOptions{Newline: newline, Indent: "\t"}
+		return &BufferOptions{Newline: newline, Indent: "\t"}
 	}
 	ext := strings.ToLower(filepath.Ext(base))
 	switch ext {
 	case ".go":
-		return BufferOptions{Newline: newline, Indent: "\t"}
+		return &BufferOptions{Newline: newline, Indent: "\t"}
 	case ".htm", ".html", ".json", ".js", ".jsx", ".ts", ".tsx", ".coffee", ".vue", ".astro", ".css", ".scss", ".sass", ".less":
-		return BufferOptions{Newline: newline, Indent: "  "}
+		return &BufferOptions{Newline: newline, Indent: "  "}
 	case ".yaml", ".yml", ".toml", ".ini", ".properties":
-		return BufferOptions{Newline: newline, Indent: "  "}
+		return &BufferOptions{Newline: newline, Indent: "  "}
 	case ".md":
-		return BufferOptions{Newline: newline, Indent: "  "}
+		return &BufferOptions{Newline: newline, Indent: "  "}
 	case ".py":
-		return BufferOptions{Newline: newline, Indent: "    "}
+		return &BufferOptions{Newline: newline, Indent: "    "}
 	case ".c", ".h", ".cpp", ".cxx", ".hpp", ".hxx", ".zig":
-		return BufferOptions{Newline: newline, Indent: "    "}
+		return &BufferOptions{Newline: newline, Indent: "    "}
 	case ".java":
-		return BufferOptions{Newline: newline, Indent: "    "}
+		return &BufferOptions{Newline: newline, Indent: "    "}
 	case ".kt":
-		return BufferOptions{Newline: newline, Indent: "  "}
+		return &BufferOptions{Newline: newline, Indent: "  "}
 	case ".rs":
-		return BufferOptions{Newline: newline, Indent: "  "}
+		return &BufferOptions{Newline: newline, Indent: "  "}
 	default:
-		return BufferOptions{Newline: newline, Indent: "  "}
+		return &BufferOptions{Newline: newline, Indent: "  "}
 	}
 }

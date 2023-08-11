@@ -3,6 +3,7 @@ package sdobjectstore
 import (
 	"github.com/aliyun/aliyun-oss-go-sdk/oss"
 	"github.com/gaorx/stardust5/sderr"
+	"github.com/samber/lo"
 	"io"
 	"strings"
 )
@@ -23,25 +24,26 @@ type aliyunOss struct {
 	internalPrefix string
 }
 
-func NewAliyunOSS(opts AliyunOssOptions) (Store, error) {
-	if opts.Bucket == "" {
+func NewAliyunOSS(opts *AliyunOssOptions) (Store, error) {
+	opts1 := lo.FromPtr(opts)
+	if opts1.Bucket == "" {
 		return nil, sderr.New("no bucket")
 	}
-	if opts.Prefix == "" {
+	if opts1.Prefix == "" {
 		return nil, sderr.New("no prefix")
 	}
-	if opts.InternalPrefix == "" {
+	if opts1.InternalPrefix == "" {
 		return nil, sderr.New("no internal prefix")
 	}
-	client, err := oss.New(opts.Endpoint, opts.AccessKey, opts.AccessSecret)
+	client, err := oss.New(opts1.Endpoint, opts1.AccessKey, opts1.AccessSecret)
 	if err != nil {
 		return nil, sderr.WithStack(err)
 	}
 	return &aliyunOss{
 		client:         client,
-		bucket:         opts.Bucket,
-		prefix:         opts.Prefix,
-		internalPrefix: opts.InternalPrefix,
+		bucket:         opts1.Bucket,
+		prefix:         opts1.Prefix,
+		internalPrefix: opts1.InternalPrefix,
 	}, nil
 }
 
