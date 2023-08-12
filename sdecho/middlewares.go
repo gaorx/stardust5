@@ -48,7 +48,7 @@ func LoggingRecover(logSkipper middleware.Skipper) echo.MiddlewareFunc {
 				bytesIn = 0
 			}
 
-			logAttrs := []slog.Attr{
+			logAttrs := []any{
 				slog.Float64("latency", elapsedMs),
 				slog.Duration("latency_h", elapsedHuman),
 				slog.String("remote_ip", ec.RealIP()),
@@ -56,10 +56,10 @@ func LoggingRecover(logSkipper middleware.Skipper) echo.MiddlewareFunc {
 				slog.Int64("bytes_out", res.Size),
 			}
 			if finalErr == nil {
-				slog.With(logAttrs).Info(fmt.Sprintf("%d %s %s", statusCode, method, path))
+				slog.With(logAttrs...).Info(fmt.Sprintf("%d %s %s", statusCode, method, path))
 			} else {
 				logAttrs = append(logAttrs, slog.String("error", fmt.Sprintf("%+v", finalErr)))
-				slog.With(logAttrs).Info(fmt.Sprintf("%d %s %s", statusCode, method, path))
+				slog.With(logAttrs...).Info(fmt.Sprintf("%d %s %s", statusCode, method, path))
 			}
 			return sderr.Wrap(finalErr, "sdecho logging recover middleware error")
 		}
