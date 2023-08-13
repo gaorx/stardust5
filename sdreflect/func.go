@@ -23,6 +23,10 @@ func OutTypes(t reflect.Type) []reflect.Type {
 	return outTypes
 }
 
+func InOutTypes(t reflect.Type) ([]reflect.Type, []reflect.Type) {
+	return InTypes(t), OutTypes(t)
+}
+
 func SplitOutTypes(outTypes []reflect.Type) ([]reflect.Type, bool) {
 	n := len(outTypes)
 	if n <= 0 {

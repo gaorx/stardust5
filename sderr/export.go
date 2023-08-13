@@ -19,8 +19,9 @@ var (
 	Cause  = eris.Cause
 	Is     = eris.Is
 	As     = eris.As
+)
 
-	// multiple
+var (
 	Append = multierror.Append
 )
 

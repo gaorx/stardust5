@@ -1,7 +1,6 @@
 package sdecho
 
 import (
-	"fmt"
 	"io"
 	"io/fs"
 	"net/http"
@@ -36,7 +35,7 @@ func noRedirectStaticDirectory(ec echo.Context, fsys fs.FS, disablePathUnescapin
 	if !disablePathUnescaping {
 		tmpPath, err := url.PathUnescape(p)
 		if err != nil {
-			return fmt.Errorf("failed to unescape path variable: %w", err)
+			return sderr.NewWith("failed to unescape path variable", err)
 		}
 		p = tmpPath
 	}

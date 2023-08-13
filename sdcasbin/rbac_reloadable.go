@@ -22,14 +22,14 @@ var _ Rbac = &ReloadableRbac{}
 
 func NewReloadableRbac(
 	loaders []RbacLoader,
-	loadFactories []RbacLoaderFactory,
+	loaderFactories []RbacLoaderFactory,
 	enforcerBuilderOpts *RbacEnforcerBuilderOptions,
 ) *ReloadableRbac {
 	return &ReloadableRbac{
 		enforcer:              lo.Must(NewRbacEnforcerBuilder(enforcerBuilderOpts).Build()),
 		polices:               "",
 		loaders:               loaders,
-		loaderFactories:       loadFactories,
+		loaderFactories:       loaderFactories,
 		enforceBuilderOptions: enforcerBuilderOpts,
 	}
 }
