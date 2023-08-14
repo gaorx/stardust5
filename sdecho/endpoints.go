@@ -5,6 +5,14 @@ import (
 	"net/http"
 )
 
+type Page struct {
+	Method      string
+	Path        string
+	Object      string
+	Func        any
+	Middlewares []echo.MiddlewareFunc
+}
+
 type API struct {
 	Path        string
 	Object      string
@@ -20,16 +28,17 @@ type FindResult[T any, F any] struct {
 	PageTotal int
 }
 
-type CrudAPIs[ID ~string | ~int | ~int64, T any, F any] struct {
-	Path    string
-	Create  func(ec echo.Context, o *T) (*T, error)
-	Update  func(ec echo.Context, o *T, fields []string) (*T, error)
-	Delete  func(ec echo.Context, id ID) error
-	GetById func(ec echo.Context, id ID) (*T, error)
-	FindBy  func(ec echo.Context, filter *F) (FindResult[T, F], error)
-	Object  string
-	ObjectR string
-	ObjectW string
+func (p Page) ToEndpoint() Endpoint {
+	if p.Method == "" {
+		p.Method = http.MethodGet
+	}
+	return Endpoint{
+		Methods:     []string{p.Method},
+		Path:        p.Path,
+		Object:      p.Object,
+		Func:        p.Func,
+		Middlewares: p.Middlewares,
+	}
 }
 
 func (api API) ToEndpoint() Endpoint {
@@ -40,8 +49,4 @@ func (api API) ToEndpoint() Endpoint {
 		Func:        api.Func,
 		Middlewares: api.Middlewares,
 	}
-}
-
-func (crud CrudAPIs[ID, T, F]) ToEndpoints() []Endpoint {
-	panic("TODO")
 }

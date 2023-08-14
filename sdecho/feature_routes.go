@@ -2,8 +2,10 @@ package sdecho
 
 import (
 	"context"
+	"fmt"
 	"github.com/gaorx/stardust5/sderr"
 	"github.com/gaorx/stardust5/sdreflect"
+	"github.com/gaorx/stardust5/sdstrings"
 	"github.com/labstack/echo/v4"
 	"github.com/samber/lo"
 	"log/slog"
@@ -23,7 +25,7 @@ type Endpoint struct {
 
 type Routes struct {
 	Endpoints []any
-	*RendererOptions
+	*ResultOptions
 }
 
 const (
@@ -39,6 +41,37 @@ func (routes Routes) Apply(app *echo.Echo) error {
 	}
 	app.Use(middleware)
 
+	// expand endpoints
+	endpoints, err := routes.ExpandEndpoints()
+	if err != nil {
+		return sderr.WithStack(err)
+	}
+
+	// prepare
+	for _, endpoint := range endpoints {
+		if err := endpoint.prepare(); err != nil {
+			return sderr.WrapWith(err, "prepare endpoint error", endpoint.Path)
+		}
+	}
+
+	// add routes
+	for _, endpoint := range endpoints {
+		endpoint1 := *endpoint
+		h := func(ec echo.Context) error {
+			return endpoint1.render(ec)
+		}
+		if slices.Contains(endpoint.Methods, "ANY") {
+			app.Any(endpoint.Path, h, endpoint.Middlewares...)
+		} else {
+			for _, method := range endpoint.Methods {
+				app.Add(method, endpoint.Path, h, endpoint.Middlewares...)
+			}
+		}
+	}
+	return nil
+}
+
+func (routes Routes) ExpandEndpoints() ([]*Endpoint, error) {
 	var endpoints []*Endpoint
 
 	var appendEndpoint func(anyEndpoint any) bool
@@ -94,32 +127,24 @@ func (routes Routes) Apply(app *echo.Echo) error {
 	// get endpoints
 	for _, anyEndpoint := range routes.Endpoints {
 		if ok := appendEndpoint(anyEndpoint); !ok {
-			return sderr.NewWith("illegal endpoint", sdreflect.TypeOf(anyEndpoint).String())
+			return nil, sderr.NewWith("illegal endpoint", sdreflect.TypeOf(anyEndpoint).String())
 		}
 	}
+	return endpoints, nil
+}
 
-	// prepare
+func (routes Routes) Objects() []string {
+	endpoints, err := routes.ExpandEndpoints()
+	if err != nil {
+		return nil
+	}
+	var objects []string
 	for _, endpoint := range endpoints {
-		if err := endpoint.prepare(); err != nil {
-			return sderr.WrapWith(err, "prepare endpoint error", endpoint.Path)
+		if endpoint != nil && endpoint.Object != "" && endpoint.Object != ObjectPublic {
+			objects = append(objects, endpoint.Object)
 		}
 	}
-
-	// add routes
-	for _, endpoint := range endpoints {
-		endpoint1 := *endpoint
-		h := func(ec echo.Context) error {
-			return endpoint1.render(ec)
-		}
-		if slices.Contains(endpoint.Methods, "ANY") {
-			app.Any(endpoint.Path, h, endpoint.Middlewares...)
-		} else {
-			for _, method := range endpoint.Methods {
-				app.Add(method, endpoint.Path, h, endpoint.Middlewares...)
-			}
-		}
-	}
-	return nil
+	return lo.Uniq(objects)
 }
 
 func (endpoint *Endpoint) prepare() error {
@@ -162,11 +187,11 @@ func (endpoint *Endpoint) render(ec echo.Context) error {
 	routes := MustGet[*Routes](ec, keyRoutes)
 	token, err := TokenDecode(context.Background(), ec)
 	if err != nil {
-		return Err(err).Render(ec, routes.RendererOptions)
+		return Err(err).Write(ec, routes.ResultOptions)
 	}
-	err = AccessControlCheck(context.Background(), ec, token, endpoint.Object, ActionCall)
+	err = AccessControlCheck(context.Background(), ec, token, endpoint.expandObject(ec), ActionCall)
 	if err != nil {
-		return Err(err).Render(ec, routes.RendererOptions)
+		return Err(err).Write(ec, routes.ResultOptions)
 	}
 	var inVals, outVals []reflect.Value
 	for _, inTyp := range endpoint.inTypes {
@@ -188,7 +213,7 @@ func (endpoint *Endpoint) render(ec echo.Context) error {
 				reqPtr = reflect.New(inTyp).Interface()
 			}
 			if err := ec.Bind(reqPtr); err != nil {
-				return Err(sderr.Wrap(ErrBadRequest, err.Error())).Render(ec, routes.RendererOptions)
+				return Err(sderr.Wrap(ErrBadRequest, err.Error())).Write(ec, routes.ResultOptions)
 			}
 			if reqIsPtr {
 				inVals = append(inVals, reflect.ValueOf(reqPtr))
@@ -201,11 +226,27 @@ func (endpoint *Endpoint) render(ec echo.Context) error {
 		outVals = endpoint.funcVal.Call(inVals)
 	}); !ok {
 		slog.With("path", endpoint.Path).Error("call endpoint error")
-		return Err(sderr.WithStack(ErrInternalServerError)).Render(ec, routes.RendererOptions)
+		return Err(sderr.WithStack(ErrInternalServerError)).Write(ec, routes.ResultOptions)
 	}
 	res := outVals[0].Interface().(*Result)
 	if res == nil {
 		res = Ok(nil)
 	}
-	return res.Render(ec, routes.RendererOptions)
+	return res.Write(ec, routes.ResultOptions)
+}
+
+func (endpoint *Endpoint) expandObject(ec echo.Context) string {
+	return sdstrings.ExpandShellLike(endpoint.Object, func(k string) string {
+		v := ec.QueryParam(k)
+		if v == "" {
+			v = ec.Param(k)
+		}
+		if v == "" {
+			v0 := ec.Get(k)
+			if v0 != nil {
+				v = fmt.Sprintf("%v", v0)
+			}
+		}
+		return v
+	})
 }

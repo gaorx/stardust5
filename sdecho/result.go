@@ -4,35 +4,38 @@ import (
 	"github.com/gaorx/stardust5/sderr"
 	"github.com/gaorx/stardust5/sdfile/sdfiletype"
 	"github.com/gaorx/stardust5/sdjson"
+	"github.com/gaorx/stardust5/sdslices"
 	"github.com/labstack/echo/v4"
 	"net/http"
 )
 
 const (
-	ViewJson = "JSON"
+	rkRaw  = "RAW"
+	rkJson = "JSON"
+	rkHtml = "HTML"
 )
 
-type ResultRenderer func(echo.Context, *Result, *RendererOptions) error
-
 type Result struct {
+	// kind
+	kind string
+
 	// http
 	HttpStatus  int
 	ContentType string
 	Headers     map[string]string
-	Raw         []byte
 
 	// data
-	Code     any
-	Fields   map[string]any
-	Data     any
-	Error    error
-	View     string
-	Facade   any
-	Renderer ResultRenderer
+	Facade any
+
+	// API & HTML
+	Code   any
+	Fields map[string]any
+	Data   any
+	Error  error
+	View   string
 }
 
-type RendererOptions struct {
-	GetRenderer      func(view string) ResultRenderer
+type ResultOptions struct {
 	CodeOk           any
 	CodeBadRequest   any
 	CodeTokenExpired any
@@ -42,7 +45,7 @@ type RendererOptions struct {
 	CodeUnknown      any
 }
 
-var defaultRenderOptions = &RendererOptions{
+var defaultResultOptions = &ResultOptions{
 	CodeOk:           "OK",
 	CodeBadRequest:   "BadRequest",
 	CodeTokenExpired: "TokenExpired",
@@ -52,9 +55,9 @@ var defaultRenderOptions = &RendererOptions{
 	CodeUnknown:      "Unknown",
 }
 
-func (r *Result) Render(ec echo.Context, opts *RendererOptions) error {
+func (r *Result) Write(ec echo.Context, opts *ResultOptions) error {
 	var r1 Result
-	var opts1 RendererOptions
+	var opts1 ResultOptions
 	r1 = *r
 	if opts != nil {
 		opts1 = *opts
@@ -79,58 +82,53 @@ func (r *Result) Render(ec echo.Context, opts *RendererOptions) error {
 	// code
 	if r1.Code == nil {
 		if r1.Error == nil {
-			r1.Code = selectCode(opts1.CodeOk, defaultRenderOptions.CodeOk)
+			r1.Code = selectCode(opts1.CodeOk, defaultResultOptions.CodeOk)
 		} else {
 			if sderr.Is(r1.Error, ErrBadRequest) {
-				r1.Code = selectCode(opts1.CodeBadRequest, defaultRenderOptions.CodeBadRequest)
+				r1.Code = selectCode(opts1.CodeBadRequest, defaultResultOptions.CodeBadRequest)
 			} else if sderr.Is(r1.Error, ErrTokenExpired) || sderr.Is(r1.Error, ErrDecodeToken) {
-				r1.Code = selectCode(opts1.CodeTokenExpired, defaultRenderOptions.CodeTokenExpired)
+				r1.Code = selectCode(opts1.CodeTokenExpired, defaultResultOptions.CodeTokenExpired)
 			} else if sderr.Is(r1.Error, ErrUnauthorized) {
-				r1.Code = selectCode(opts1.CodeUnauthorized, defaultRenderOptions.CodeUnauthorized)
+				r1.Code = selectCode(opts1.CodeUnauthorized, defaultResultOptions.CodeUnauthorized)
 			} else if sderr.Is(r1.Error, ErrForbidden) {
-				r1.Code = selectCode(opts1.CodeForbidden, defaultRenderOptions.CodeForbidden)
+				r1.Code = selectCode(opts1.CodeForbidden, defaultResultOptions.CodeForbidden)
 			} else if sderr.Is(r1.Error, ErrLogin) {
-				r1.Code = selectCode(opts1.CodeLogin, defaultRenderOptions.CodeLogin)
+				r1.Code = selectCode(opts1.CodeLogin, defaultResultOptions.CodeLogin)
 			} else {
-				r1.Code = selectCode(opts1.CodeUnknown, defaultRenderOptions.CodeUnknown)
+				r1.Code = selectCode(opts1.CodeUnknown, defaultResultOptions.CodeUnknown)
 			}
 		}
 	}
 
-	// view
-	if r1.View == "" {
-		r1.View = ViewJson
+	// write
+	switch r1.kind {
+	case rkRaw:
+		return r1.writeRaw(ec)
+	case rkJson:
+		return r1.writeJson(ec)
+	case rkHtml:
+		return r1.writeHtml(ec)
+	default:
+		panic(sderr.NewWith("illegal result format", r1.kind))
 	}
+}
 
-	// renderer
-	if r1.Renderer == nil {
-		if r1.Raw != nil {
-			if r1.ContentType == "" {
-				r1.ContentType = sdfiletype.MatchMime(r1.Raw, echo.MIMEOctetStream)
-			}
-			r1.Renderer = renderRaw
-		} else {
-			if r1.View == ViewJson {
-				r1.Renderer = renderJson
-			} else {
-				if opts1.GetRenderer == nil {
-					panic(sderr.New("get result renderer error"))
-				}
-				r1.Renderer = opts1.GetRenderer(r1.View)
-			}
-		}
+func Raw(httpStatus int, contentType string, data []byte) *Result {
+	return &Result{
+		kind:        rkRaw,
+		HttpStatus:  httpStatus,
+		ContentType: contentType,
+		Data:        sdslices.Ensure(data),
+		Error:       nil,
 	}
-
-	// render
-	return r1.Renderer(ec, &r1, &opts1)
 }
 
 func Ok(data any) *Result {
-	return &Result{Data: data, Error: nil}
+	return &Result{kind: rkJson, Data: data, Error: nil}
 }
 
 func Err(err any) *Result {
-	return &Result{Data: nil, Error: sderr.AsErr(err)}
+	return &Result{kind: rkJson, Data: nil, Error: sderr.AsErr(err)}
 }
 
 func Of(data any, err any) *Result {
@@ -141,8 +139,8 @@ func Of(data any, err any) *Result {
 	}
 }
 
-func Raw(httpStatus int, contentType string, data []byte) *Result {
-	return &Result{HttpStatus: httpStatus, ContentType: contentType, Raw: data}
+func PageOf(data any, view string) *Result {
+	return &Result{kind: rkHtml, Data: data, Error: nil, View: view}
 }
 
 func (r *Result) SetHttpStatus(status int) *Result {
@@ -196,40 +194,46 @@ func (r *Result) WithFields(fields map[string]any) *Result {
 	return r
 }
 
-func (r *Result) SetView(view string) *Result {
-	r.View = view
-	return r
-}
-
 func (r *Result) SetFacade(facade any) *Result {
 	r.Facade = facade
 	return r
 }
 
-func (r *Result) SetRenderer(renderer ResultRenderer) *Result {
-	r.Renderer = renderer
-	return r
-}
-
-func renderRaw(ec echo.Context, r1 *Result, _ *RendererOptions) error {
-	for k, v := range r1.Headers {
+func (r *Result) writeRaw(ec echo.Context) error {
+	raw := r.Data.([]byte)
+	contentType := r.ContentType
+	if contentType == "" {
+		contentType = sdfiletype.MatchMime(raw, echo.MIMEOctetStream)
+	}
+	for k, v := range r.Headers {
 		ec.Response().Header().Set(k, v)
 	}
-	return ec.Blob(r1.HttpStatus, r1.ContentType, r1.Raw)
+	return ec.Blob(r.HttpStatus, contentType, raw)
 }
 
-func renderJson(ec echo.Context, r1 *Result, _ *RendererOptions) error {
-	for k, v := range r1.Headers {
+func (r *Result) writeJson(ec echo.Context) error {
+	for k, v := range r.Headers {
 		ec.Response().Header().Set(k, v)
 	}
-	o := sdjson.Object{"code": r1.Code}
-	if r1.Error == nil {
-		o["data"] = r1.Data
+	return ec.JSON(r.HttpStatus, r.makeResponse())
+}
+
+func (r *Result) writeHtml(ec echo.Context) error {
+	for k, v := range r.Headers {
+		ec.Response().Header().Set(k, v)
+	}
+	return ec.Render(r.HttpStatus, r.View, r.makeResponse())
+}
+
+func (r *Result) makeResponse() sdjson.Object {
+	o := sdjson.Object{"code": r.Code}
+	if r.Error == nil {
+		o["data"] = r.Data
 	} else {
-		o["error"] = r1.Error.Error()
+		o["error"] = r.Error.Error()
 	}
-	for k, v := range r1.Fields {
+	for k, v := range r.Fields {
 		o[k] = v
 	}
-	return ec.JSON(r1.HttpStatus, o)
+	return o
 }
