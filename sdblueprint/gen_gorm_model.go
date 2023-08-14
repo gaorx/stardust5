@@ -129,7 +129,7 @@ func (g GormModel) GenerateTo(buffs *sdcodegen.Buffers, bp *Blueprint) error {
 func onGormHeader(w sdcodegen.Writer, g *GormModel, _ *Blueprint) {
 	if g.WithQuery {
 		sdgengo.Header(w, w.Filename(), g.Package, []string{
-			"github.com/gaorx/stardust4/sderr",
+			"github.com/gaorx/stardust5/sderr",
 			"gorm.io/gorm",
 		}).NL()
 	} else {

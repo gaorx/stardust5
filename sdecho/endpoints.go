@@ -7,6 +7,8 @@ import (
 	"github.com/gaorx/stardust5/sdreflect"
 	"github.com/gaorx/stardust5/sdstrings"
 	"github.com/gaorx/stardust5/sdurl"
+	"github.com/gaorx/stardust5/sdvalidator"
+	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
 	"github.com/samber/lo"
 	"log/slog"
@@ -258,6 +260,13 @@ func (endpoint *Endpoint) render(ec echo.Context) error {
 			}
 			if err := ec.Bind(reqPtr); err != nil {
 				return Err(sderr.Wrap(ErrBadRequest, err.Error())).Write(ec, routes.ResultOptions)
+			}
+			if err := sdvalidator.Struct(reqPtr); err != nil {
+				if _, ok := sderr.AsT[validator.ValidationErrors](err); ok {
+					return Err(sderr.Wrap(ErrBadRequest, "validate error")).Write(ec, routes.ResultOptions)
+				} else {
+					return Err(sderr.Wrap(ErrBadRequest, err.Error())).Write(ec, routes.ResultOptions)
+				}
 			}
 			if reqIsPtr {
 				inVals = append(inVals, reflect.ValueOf(reqPtr))

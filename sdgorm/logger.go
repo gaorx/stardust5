@@ -38,7 +38,7 @@ func LoggerOf(name string) gormlogger.Interface {
 		return LoggerGormDefault
 	case "discard", "disable":
 		return LoggerDiscard
-	case "builtin", "stardust", "sd":
+	case "builtin", "stardust", "sd", "slog":
 		return LoggerBuiltin
 	case "plain_info", "info":
 		return LoggerPlainInfo
