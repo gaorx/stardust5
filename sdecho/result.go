@@ -2,6 +2,7 @@ package sdecho
 
 import (
 	"github.com/gaorx/stardust5/sderr"
+	"github.com/gaorx/stardust5/sderr/sdnotfounderr"
 	"github.com/gaorx/stardust5/sdfile/sdfiletype"
 	"github.com/gaorx/stardust5/sdjson"
 	"github.com/gaorx/stardust5/sdslices"
@@ -42,17 +43,19 @@ type ResultOptions struct {
 	CodeUnauthorized any
 	CodeForbidden    any
 	CodeLogin        any
+	CodeNotFound     any
 	CodeUnknown      any
 }
 
 var defaultResultOptions = &ResultOptions{
-	CodeOk:           "OK",
-	CodeBadRequest:   "BadRequest",
-	CodeTokenExpired: "TokenExpired",
-	CodeUnauthorized: "Unauthorized",
-	CodeForbidden:    "Forbidden",
-	CodeLogin:        "Login",
-	CodeUnknown:      "Unknown",
+	CodeOk:           200,
+	CodeBadRequest:   400,
+	CodeTokenExpired: 701,
+	CodeUnauthorized: 401,
+	CodeForbidden:    403,
+	CodeLogin:        702,
+	CodeNotFound:     404,
+	CodeUnknown:      500,
 }
 
 func (r *Result) Write(ec echo.Context, opts *ResultOptions) error {
@@ -94,6 +97,8 @@ func (r *Result) Write(ec echo.Context, opts *ResultOptions) error {
 				r1.Code = selectCode(opts1.CodeForbidden, defaultResultOptions.CodeForbidden)
 			} else if sderr.Is(r1.Error, ErrLogin) {
 				r1.Code = selectCode(opts1.CodeLogin, defaultResultOptions.CodeLogin)
+			} else if sdnotfounderr.Is(r1.Error) {
+				r1.Code = selectCode(opts1.CodeNotFound, defaultResultOptions.CodeNotFound)
 			} else {
 				r1.Code = selectCode(opts1.CodeUnknown, defaultResultOptions.CodeUnknown)
 			}

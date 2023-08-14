@@ -1,30 +1,35 @@
 package sdecho
 
 import (
+	"github.com/gaorx/stardust5/sderr"
+	"github.com/labstack/echo/v4"
 	"io"
 	"io/fs"
 	"net/http"
 	"net/url"
 	"path/filepath"
 	"strings"
-
-	"github.com/gaorx/stardust5/sderr"
-	"github.com/labstack/echo/v4"
 )
+
+type NoRedirectStatic struct {
+	PathPrefix string
+	Fsys       fs.FS
+}
+
+func (d NoRedirectStatic) Apply(app *echo.Echo) error {
+	app.Add(
+		http.MethodGet,
+		d.PathPrefix+"*",
+		noRedirectStaticDirectoryHandler(d.Fsys, false),
+	)
+	return nil
+}
 
 const (
 	defaultIndexPage = "index.html"
 )
 
-func NoRedirectStaticFS(app *echo.Echo, pathPrefix string, fsys fs.FS) *echo.Route {
-	return app.Add(
-		http.MethodGet,
-		pathPrefix+"*",
-		NoRedirectStaticDirectoryHandler(fsys, false),
-	)
-}
-
-func NoRedirectStaticDirectoryHandler(fsys fs.FS, disablePathUnescaping bool) echo.HandlerFunc {
+func noRedirectStaticDirectoryHandler(fsys fs.FS, disablePathUnescaping bool) echo.HandlerFunc {
 	return func(ec echo.Context) error {
 		return noRedirectStaticDirectory(ec, fsys, disablePathUnescaping)
 	}

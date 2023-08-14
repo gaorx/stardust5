@@ -8,15 +8,21 @@ import (
 	"net/http"
 )
 
-func BrowserHistoryRouterStaticFS(app *echo.Echo, pathPrefix string, fsys fs.FS) *echo.Route {
-	return app.Add(
-		http.MethodGet,
-		pathPrefix+"*",
-		BrowserHistoryRouterStaticDirectoryHandler(fsys, "index.html", false),
-	)
+type BrowserHistoryRouterStatic struct {
+	PathPrefix string
+	Fsys       fs.FS
 }
 
-func BrowserHistoryRouterStaticDirectoryHandler(fsys fs.FS, recoveryFilename string, disablePathUnescaping bool) echo.HandlerFunc {
+func (d BrowserHistoryRouterStatic) Apply(app *echo.Echo) error {
+	app.Add(
+		http.MethodGet,
+		d.PathPrefix+"*",
+		browserHistoryRouterStaticDirectoryHandler(d.Fsys, "index.html", false),
+	)
+	return nil
+}
+
+func browserHistoryRouterStaticDirectoryHandler(fsys fs.FS, recoveryFilename string, disablePathUnescaping bool) echo.HandlerFunc {
 	return func(ec echo.Context) error {
 		err := noRedirectStaticDirectory(ec, fsys, disablePathUnescaping)
 		if err != nil {
