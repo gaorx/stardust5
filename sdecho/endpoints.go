@@ -296,7 +296,7 @@ func (endpoint *Endpoint) render(ec echo.Context) error {
 }
 
 func (endpoint *Endpoint) expandObject(ec echo.Context) string {
-	return sdstrings.ExpandShellLike(endpoint.Object, func(k string) string {
+	return ObjectExpand(endpoint.Object, func(k string) string {
 		v := ec.QueryParam(k)
 		if v == "" {
 			v = ec.Param(k)
