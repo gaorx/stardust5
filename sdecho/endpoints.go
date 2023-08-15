@@ -116,7 +116,7 @@ func (api CrudAPI[T, ID, F]) ToEndpoints() []Endpoint {
 			Object: selectObject(api.ObjectW, api.Object),
 			Func: func(ec echo.Context, req T) *Result {
 				created, err := api.Create(ec, req)
-				return Of(created, err)
+				return ResultOf(created, err)
 			},
 			Middlewares: api.Middlewares,
 		}.ToEndpoint())
@@ -130,7 +130,7 @@ func (api CrudAPI[T, ID, F]) ToEndpoints() []Endpoint {
 			Func: func(ec echo.Context, req T) *Result {
 				fields := sdstrings.SplitNonempty(ec.QueryParam("fields"), ",", true)
 				updated, err := api.Update(ec, req, fields)
-				return Of(updated, err)
+				return ResultOf(updated, err)
 			},
 			Middlewares: api.Middlewares,
 		}.ToEndpoint())
@@ -143,7 +143,7 @@ func (api CrudAPI[T, ID, F]) ToEndpoints() []Endpoint {
 			Object: selectObject(api.ObjectW, api.Object),
 			Func: func(ec echo.Context, id ID) *Result {
 				err := api.Delete(ec, id)
-				return Of("deleted", err)
+				return ResultOf("deleted", err)
 			},
 			Middlewares: api.Middlewares,
 		}.ToEndpoint())
@@ -158,7 +158,7 @@ func (api CrudAPI[T, ID, F]) ToEndpoints() []Endpoint {
 				Id ID `json:"id"`
 			}) *Result {
 				record, err := api.Get(ec, req.Id)
-				return Of(record, err)
+				return ResultOf(record, err)
 			},
 			Middlewares: api.Middlewares,
 		}.ToEndpoint())
@@ -179,7 +179,7 @@ func (api CrudAPI[T, ID, F]) ToEndpoints() []Endpoint {
 					No:   ec.ArgInt("page", 1),
 				}
 				fr, err := api.Find(ec, filter, pg)
-				return Of(fr.Data, err).WithFields(map[string]any{
+				return ResultOf(fr.Data, err).WithFields(map[string]any{
 					"page":      pg.No,
 					"pageSize":  pg.Size,
 					"pageTotal": pg.Total,
@@ -194,15 +194,20 @@ func (api CrudAPI[T, ID, F]) ToEndpoints() []Endpoint {
 }
 
 func (endpoint *Endpoint) prepare() error {
+	// path
 	if endpoint.Path == "" {
 		return sderr.New("no path in endpoint")
 	}
+
+	// method
 	if len(endpoint.Methods) <= 0 {
 		return sderr.NewWith("no methods in endpoint", endpoint.Path)
 	}
 	if slices.Contains(endpoint.Methods, "*") {
 		endpoint.Methods = []string{"ANY"}
 	}
+
+	// func
 	if endpoint.Func == nil {
 		return sderr.NewWith("no func in endpoint", endpoint.Path)
 	}
@@ -233,11 +238,11 @@ func (endpoint *Endpoint) render(ec echo.Context) error {
 	routes := MustGet[*Routes](ec, keyRoutes)
 	token, err := TokenDecode(context.Background(), ec)
 	if err != nil {
-		return Err(err).Write(ec, routes.ResultOptions)
+		return ResultErr(err).Write(ec, routes.ResultOptions)
 	}
 	err = AccessControlCheck(context.Background(), ec, token, endpoint.expandObject(ec), ActionCall)
 	if err != nil {
-		return Err(err).Write(ec, routes.ResultOptions)
+		return ResultErr(err).Write(ec, routes.ResultOptions)
 	}
 	var inVals, outVals []reflect.Value
 	for _, inTyp := range endpoint.inTypes {
@@ -259,13 +264,15 @@ func (endpoint *Endpoint) render(ec echo.Context) error {
 				reqPtr = reflect.New(inTyp).Interface()
 			}
 			if err := ec.Bind(reqPtr); err != nil {
-				return Err(sderr.Wrap(ErrBadRequest, err.Error())).Write(ec, routes.ResultOptions)
+				return ResultErr(sderr.Wrap(ErrBadRequest, err.Error())).Write(ec, routes.ResultOptions)
 			}
-			if err := sdvalidator.Struct(reqPtr); err != nil {
-				if _, ok := sderr.AsT[validator.ValidationErrors](err); ok {
-					return Err(sderr.Wrap(ErrBadRequest, "validate error")).Write(ec, routes.ResultOptions)
-				} else {
-					return Err(sderr.Wrap(ErrBadRequest, err.Error())).Write(ec, routes.ResultOptions)
+			if isStructOrStructPtr(inTyp) {
+				if err := sdvalidator.Struct(reqPtr); err != nil {
+					if _, ok := sderr.AsT[validator.ValidationErrors](err); ok {
+						return ResultErr(sderr.Wrap(ErrBadRequest, "validate error")).Write(ec, routes.ResultOptions)
+					} else {
+						return ResultErr(sderr.Wrap(ErrBadRequest, err.Error())).Write(ec, routes.ResultOptions)
+					}
 				}
 			}
 			if reqIsPtr {
@@ -279,11 +286,11 @@ func (endpoint *Endpoint) render(ec echo.Context) error {
 		outVals = endpoint.funcVal.Call(inVals)
 	}); !ok {
 		slog.With("path", endpoint.Path).Error("call endpoint error")
-		return Err(sderr.WithStack(ErrInternalServerError)).Write(ec, routes.ResultOptions)
+		return ResultErr(sderr.WithStack(ErrInternalServerError)).Write(ec, routes.ResultOptions)
 	}
 	res := outVals[0].Interface().(*Result)
 	if res == nil {
-		res = Ok(nil)
+		res = ResultOk(nil)
 	}
 	return res.Write(ec, routes.ResultOptions)
 }
@@ -302,4 +309,15 @@ func (endpoint *Endpoint) expandObject(ec echo.Context) string {
 		}
 		return v
 	})
+}
+
+func isStructOrStructPtr(typ reflect.Type) bool {
+	switch typ.Kind() {
+	case reflect.Struct:
+		return true
+	case reflect.Ptr:
+		return isStructOrStructPtr(typ.Elem())
+	default:
+		return false
+	}
 }

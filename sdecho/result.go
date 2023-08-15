@@ -5,9 +5,11 @@ import (
 	"github.com/gaorx/stardust5/sderr/sdnotfounderr"
 	"github.com/gaorx/stardust5/sdfile/sdfiletype"
 	"github.com/gaorx/stardust5/sdjson"
+	"github.com/gaorx/stardust5/sdreflect"
 	"github.com/gaorx/stardust5/sdslices"
 	"github.com/labstack/echo/v4"
 	"net/http"
+	"reflect"
 )
 
 const (
@@ -75,7 +77,33 @@ func (r *Result) Write(ec echo.Context, opts *ResultOptions) error {
 	}
 
 	// facade
-	// TODO
+	if r1.Facade != nil && r1.Data != nil {
+		facadeVal := sdreflect.ValueOf(r1.Facade)
+		if facadeVal.Kind() != reflect.Func {
+			return sderr.NewWith("illegal facade", "2")
+		}
+		if facadeVal.Type().NumIn() != 1 || facadeVal.Type().NumOut() != 1 {
+			return sderr.NewWith("illegal facade", "2")
+		}
+		facadeResultType := facadeVal.Type().Out(0)
+		if r1.kind == rkJson || r1.kind == rkHtml {
+			dataVal := sdreflect.ValueOf(r1.Data)
+			if dataVal.Kind() == reflect.Slice || dataVal.Kind() == reflect.Array {
+				n := dataVal.Len()
+				processed := reflect.MakeSlice(reflect.SliceOf(facadeResultType), 0, n)
+				for i := 0; i < n; i++ {
+					processed = reflect.Append(processed, facadeVal.Call([]reflect.Value{dataVal.Index(i)})[0])
+				}
+				r1.Facade, r1.Data = nil, processed.Interface()
+			} else {
+				processed := facadeVal.Call([]reflect.Value{sdreflect.ValueOf(r1.Data)})[0].Interface()
+				r1.Facade, r1.Data = nil, processed
+			}
+		} else if r1.kind == rkRaw {
+			processed := facadeVal.Call([]reflect.Value{sdreflect.ValueOf(r1.Data)})[0].Interface()
+			r1.Facade, r1.Data = nil, processed
+		}
+	}
 
 	// http status code
 	if r1.HttpStatus <= 0 {
@@ -118,7 +146,7 @@ func (r *Result) Write(ec echo.Context, opts *ResultOptions) error {
 	}
 }
 
-func Raw(httpStatus int, contentType string, data []byte) *Result {
+func ResultRaw(httpStatus int, contentType string, data []byte) *Result {
 	return &Result{
 		kind:        rkRaw,
 		HttpStatus:  httpStatus,
@@ -128,32 +156,32 @@ func Raw(httpStatus int, contentType string, data []byte) *Result {
 	}
 }
 
-func Ok(data any) *Result {
+func ResultOk(data any) *Result {
 	return &Result{kind: rkJson, Data: data, Error: nil}
 }
 
-func Err(err any) *Result {
+func ResultErr(err any) *Result {
 	return &Result{kind: rkJson, Data: nil, Error: sderr.AsErr(err)}
 }
 
-func Of(data any, err any) *Result {
+func ResultOf(data any, err any) *Result {
 	if err != nil {
-		return Err(err)
+		return ResultErr(err)
 	} else {
-		return Ok(data)
+		return ResultOk(data)
 	}
 }
 
-func PageOf(data any, view string) *Result {
+func ResultPage(data any, view string) *Result {
 	return &Result{kind: rkHtml, Data: data, Error: nil, View: view}
 }
 
-func (r *Result) SetHttpStatus(status int) *Result {
+func (r *Result) WithHttpStatus(status int) *Result {
 	r.HttpStatus = status
 	return r
 }
 
-func (r *Result) SetContentType(contentType string) *Result {
+func (r *Result) WithContentType(contentType string) *Result {
 	r.ContentType = contentType
 	return r
 }
@@ -176,7 +204,7 @@ func (r *Result) WithHeaders(headers map[string]string) *Result {
 	return r
 }
 
-func (r *Result) SetCode(code any) *Result {
+func (r *Result) WithCode(code any) *Result {
 	r.Code = code
 	return r
 }
@@ -199,7 +227,7 @@ func (r *Result) WithFields(fields map[string]any) *Result {
 	return r
 }
 
-func (r *Result) SetFacade(facade any) *Result {
+func (r *Result) WithFacade(facade any) *Result {
 	r.Facade = facade
 	return r
 }
