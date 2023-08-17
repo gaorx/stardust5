@@ -4,7 +4,6 @@ import (
 	"github.com/gaorx/stardust5/sderr"
 	"github.com/gaorx/stardust5/sdreflect"
 	"github.com/labstack/echo/v4"
-	"github.com/samber/lo"
 	"slices"
 )
 
@@ -116,18 +115,4 @@ func (routes Routes) ExpandEndpoints() ([]*Endpoint, error) {
 		}
 	}
 	return endpoints, nil
-}
-
-func (routes Routes) Objects() []string {
-	endpoints, err := routes.ExpandEndpoints()
-	if err != nil {
-		return nil
-	}
-	var objects []string
-	for _, endpoint := range endpoints {
-		if endpoint != nil && endpoint.Object != "" && endpoint.Object != ObjectPublic {
-			objects = append(objects, endpoint.Object)
-		}
-	}
-	return lo.Uniq(objects)
 }

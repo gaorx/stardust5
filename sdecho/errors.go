@@ -1,15 +1,15 @@
 package sdecho
 
 import (
-	"errors"
+	"github.com/gaorx/stardust5/sderr"
 )
 
 var (
-	ErrUnauthorized        = errors.New("unauthorized")
-	ErrForbidden           = errors.New("forbidden")
-	ErrBadRequest          = errors.New("bad request")
-	ErrInternalServerError = errors.New("internal server error")
-	ErrDecodeToken         = errors.New("decode token error")
-	ErrTokenExpired        = errors.New("token expired")
-	ErrLogin               = errors.New("login error")
+	ErrUnauthorized        = sderr.Sentinel("unauthorized")
+	ErrForbidden           = sderr.Sentinel("forbidden")
+	ErrBadRequest          = sderr.Sentinel("bad request")
+	ErrInternalServerError = sderr.Sentinel("internal server error")
+	ErrDecodeToken         = sderr.Sentinel("decode token error")
+	ErrTokenExpired        = sderr.Sentinel("token expired")
+	ErrLogin               = sderr.Sentinel("login error")
 )

@@ -1,8 +1,8 @@
 package sdslices
 
-func Ensure[T any](s []T) []T {
+func Ensure[S ~[]T, T any](s S) S {
 	if s == nil {
-		return make([]T, 0)
+		return make(S, 0)
 	}
 	return s
 }

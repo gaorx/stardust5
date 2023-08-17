@@ -55,6 +55,9 @@ func (b *RbacEnforcerBuilder) Build() (*casbin.Enforcer, error) {
 	}
 	policies := b.GeneratePolicies()
 	if strings.TrimSpace(policies) != "" {
+		//fmt.Println("---------")
+		//fmt.Println(policies)
+		//fmt.Println("---------")
 		enforcer, err := casbin.NewEnforcer(m, stringadapter.NewAdapter(policies))
 		if err != nil {
 			return nil, sderr.WithStack(err)

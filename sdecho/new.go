@@ -8,7 +8,6 @@ import (
 	"github.com/gaorx/stardust5/sdslog"
 	"github.com/gaorx/stardust5/sdtime"
 	"github.com/samber/lo"
-	"log/slog"
 	"net/http"
 	"strings"
 	"time"
@@ -113,17 +112,16 @@ func loggingRecover(logSkipper middleware.Skipper) echo.MiddlewareFunc {
 			}
 
 			logAttrs := []any{
-				slog.Float64("latency", elapsedMs),
-				slog.Duration("latency_h", elapsedHuman),
-				slog.String("remote_ip", ec.RealIP()),
-				slog.Int64("bytes_in", bytesIn),
-				slog.Int64("bytes_out", res.Size),
+				sdslog.Float64("latency", elapsedMs),
+				sdslog.Duration("latency_h", elapsedHuman),
+				sdslog.String("remote_ip", ec.RealIP()),
+				sdslog.Int64("bytes_in", bytesIn),
+				sdslog.Int64("bytes_out", res.Size),
 			}
 			if finalErr == nil {
-				slog.With(logAttrs...).Info(fmt.Sprintf("%d %s %s", statusCode, method, path))
+				sdslog.With(logAttrs...).Infof("%d %s %s", statusCode, method, path)
 			} else {
-				logAttrs = append(logAttrs, slog.String("error", fmt.Sprintf("%+v", finalErr)))
-				slog.With(logAttrs...).Info(fmt.Sprintf("%d %s %s", statusCode, method, path))
+				sdslog.With(logAttrs...).WithError(fmt.Sprintf("%+v", finalErr)).Infof("%d %s %s", statusCode, method, path)
 			}
 			return sderr.Wrap(finalErr, "logging recover middleware error")
 		}

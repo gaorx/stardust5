@@ -1,6 +1,7 @@
 package sderr
 
 import (
+	stderr "errors"
 	"github.com/hashicorp/go-multierror"
 	"github.com/rotisserie/eris"
 	"github.com/samber/lo"
@@ -26,6 +27,10 @@ var (
 )
 
 // misc
+
+func Sentinel(text string) error {
+	return stderr.New(text)
+}
 
 func WithStack(err error) error {
 	if err == nil {

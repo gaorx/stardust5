@@ -1,13 +1,12 @@
 package sdhttpua
 
 import (
-	"errors"
 	"github.com/gaorx/stardust5/sderr"
 	"github.com/mssola/user_agent"
 )
 
 var (
-	ErrParse = errors.New("sdhttpua parse User-Agent error")
+	ErrParse = sderr.Sentinel("sdhttpua parse User-Agent error")
 )
 
 type UA struct {

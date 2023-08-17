@@ -6,7 +6,7 @@ require (
 	github.com/BurntSushi/toml v1.3.2
 	github.com/aliyun/aliyun-oss-go-sdk v2.2.8+incompatible
 	github.com/blastrain/vitess-sqlparser v0.0.0-20201030050434-a139afbb1aba
-	github.com/casbin/casbin/v2 v2.73.1
+	github.com/casbin/casbin/v2 v2.75.0
 	github.com/cenkalti/backoff/v4 v4.2.1
 	github.com/dgraph-io/ristretto v0.1.1
 	github.com/eclipse/paho.mqtt.golang v1.4.3
@@ -18,7 +18,7 @@ require (
 	github.com/h2non/filetype v1.1.3
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/iancoleman/strcase v0.3.0
-	github.com/imroc/req/v3 v3.41.1
+	github.com/imroc/req/v3 v3.41.4
 	github.com/kr/pretty v0.3.1
 	github.com/labstack/echo/v4 v4.11.1
 	github.com/mattn/go-shellwords v1.0.12
@@ -32,12 +32,12 @@ require (
 	github.com/streadway/amqp v1.1.0
 	github.com/stretchr/testify v1.8.4
 	github.com/urfave/cli/v2 v2.25.7
-	golang.org/x/exp v0.0.0-20230810033253-352e893a4cad
+	golang.org/x/exp v0.0.0-20230811145659-89c5cff77bcb
 	golang.org/x/text v0.12.0
 	gopkg.in/yaml.v3 v3.0.1
 	gorm.io/driver/mysql v1.5.1
 	gorm.io/driver/postgres v1.5.2
-	gorm.io/driver/sqlite v1.5.2
+	gorm.io/driver/sqlite v1.5.3
 	gorm.io/gorm v1.25.3
 )
 
@@ -58,7 +58,7 @@ require (
 	github.com/golang-jwt/jwt v3.2.2+incompatible // indirect
 	github.com/golang/glog v1.1.2 // indirect
 	github.com/golang/mock v1.6.0 // indirect
-	github.com/google/pprof v0.0.0-20230808223545-4887780b67fb // indirect
+	github.com/google/pprof v0.0.0-20230816232805-2861d24d8f05 // indirect
 	github.com/gorilla/websocket v1.5.0 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
@@ -66,7 +66,7 @@ require (
 	github.com/jackc/pgx/v5 v5.4.3 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
-	github.com/juju/errors v0.0.0-20170703010042-c7d06af17c68 // indirect
+	github.com/juju/errors v1.0.0 // indirect
 	github.com/klauspost/compress v1.16.7 // indirect
 	github.com/kr/text v0.2.0 // indirect
 	github.com/labstack/gommon v0.4.0 // indirect
@@ -80,7 +80,7 @@ require (
 	github.com/quic-go/qpack v0.4.0 // indirect
 	github.com/quic-go/qtls-go1-20 v0.3.2 // indirect
 	github.com/quic-go/quic-go v0.37.4 // indirect
-	github.com/refraction-networking/utls v1.4.2 // indirect
+	github.com/refraction-networking/utls v1.4.3 // indirect
 	github.com/rogpeppe/go-internal v1.11.0 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/tidwall/gjson v1.16.0 // indirect

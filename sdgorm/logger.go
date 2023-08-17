@@ -5,7 +5,6 @@ import (
 	"errors"
 	"github.com/gaorx/stardust5/sdslog"
 	"log"
-	"log/slog"
 	"os"
 	"strings"
 	"time"
@@ -105,20 +104,19 @@ func (l *builtinLogger) Trace(ctx context.Context, begin time.Time, fc func() (s
 	elapsed := time.Since(begin)
 	sql, _ := fc()
 	attrs := []any{
-		slog.Float64("elapsed", sdtime.ToMillisF(elapsed)),
-		slog.String("line", gormutils.FileWithLineNum()),
+		sdslog.Float64("elapsed", sdtime.ToMillisF(elapsed)),
+		sdslog.String("line", gormutils.FileWithLineNum()),
 	}
 
 	if err != nil && !(errors.Is(err, gorm.ErrRecordNotFound) && l.skipErrRecordNotFound) {
-		attrs = append(attrs, slog.String("error", err.Error()))
-		slog.With(attrs...).ErrorContext(ctx, sql)
+		sdslog.With(attrs...).WithError(err).ErrorContext(ctx, sql)
 		return
 	}
 
 	if l.slowThreshold != 0 && elapsed > l.slowThreshold {
-		slog.With(attrs...).WarnContext(ctx, sql)
+		sdslog.With(attrs...).WarnContext(ctx, sql)
 		return
 	}
 
-	slog.With(attrs...).DebugContext(ctx, sql)
+	sdslog.With(attrs...).DebugContext(ctx, sql)
 }

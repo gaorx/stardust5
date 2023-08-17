@@ -2,7 +2,6 @@ package sdgorm
 
 import (
 	"database/sql"
-	"errors"
 	"strings"
 
 	"gorm.io/driver/sqlite"
@@ -36,7 +35,7 @@ type Address struct {
 }
 
 var (
-	ErrIllegalDriver = errors.New("illegal driver")
+	ErrIllegalDriver = sderr.Sentinel("illegal driver")
 )
 
 func Dial(addr Address, config *gorm.Config) (*gorm.DB, error) {

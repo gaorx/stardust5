@@ -38,7 +38,8 @@ type Tokens struct {
 }
 
 const (
-	keyTokens = "sdecho.tokens"
+	keyTokens      = "sdecho.tokens"
+	keyCachedToken = "sdecho.cached_token"
 )
 
 func (tt Tokens) Apply(app *echo.Echo) error {
@@ -57,6 +58,9 @@ func (tt Tokens) Apply(app *echo.Echo) error {
 }
 
 func TokenDecode(_ context.Context, ec echo.Context) (Token, error) {
+	if cachedToken, ok := Get[Token](ec, keyCachedToken); ok {
+		return cachedToken, nil
+	}
 	tt := MustGet[*Tokens](ec, keyTokens)
 	var encoded string
 	if tt.GetEncoded != nil {
@@ -74,8 +78,10 @@ func TokenDecode(_ context.Context, ec echo.Context) (Token, error) {
 				return t, sderr.WithStack(ErrTokenExpired)
 			}
 		}
+		ec.Set(keyCachedToken, t)
 		return t, nil
 	} else {
+		ec.Set(keyCachedToken, Token{})
 		return Token{}, nil
 	}
 }

@@ -1,9 +1,9 @@
 package sdcache
 
 import (
-	"errors"
+	"github.com/gaorx/stardust5/sderr"
 )
 
 var (
-	ErrNotFound = errors.New("cache key not found")
+	ErrNotFound = sderr.Sentinel("cache key not found")
 )

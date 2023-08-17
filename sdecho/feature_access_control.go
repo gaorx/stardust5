@@ -2,32 +2,34 @@ package sdecho
 
 import (
 	"context"
+	"fmt"
 	"github.com/gaorx/stardust5/sderr"
-	"github.com/gaorx/stardust5/sdstrings"
+	"github.com/gaorx/stardust5/sdmaps"
 	"github.com/labstack/echo/v4"
-	"github.com/samber/lo"
-	"slices"
 )
 
 const (
-	ObjectPublic = "public"
-	ActionCall   = "call"
-	ActionShow   = "show"
+	ActionCall = "call"
+	ActionShow = "show"
 )
 
 type AccessControl struct {
-	Check func(ctx context.Context, ec echo.Context, token Token, object, action string) (bool, error)
+	Check             AccessControlChecker
+	DefaultObjectVars map[string]string
 }
 
+type AccessControlChecker func(ctx context.Context, ec echo.Context, token Token, object Object, action string) (bool, error)
+
 const (
-	keyAccessControl = "sdecho.access_control"
+	keyAccessControlChecker    = "sdecho.access_control_checker"
+	keyAccessControlObjectVars = "sdecho.access_control_object_vars"
 )
 
-type accessControlChecker func(context.Context, echo.Context, Token, string, string) error
+type accessControlChecker func(context.Context, echo.Context, Token, Object, string) error
 
 func (ac AccessControl) Apply(app *echo.Echo) error {
-	checker := func(ctx context.Context, ec echo.Context, token Token, object, action string) error {
-		if object == ObjectPublic {
+	checker := func(ctx context.Context, ec echo.Context, token Token, object Object, action string) error {
+		if object.IsPublic() {
 			return nil
 		}
 		if token.UID == "" {
@@ -46,7 +48,8 @@ func (ac AccessControl) Apply(app *echo.Echo) error {
 
 	middleware := func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(ec echo.Context) error {
-			ec.Set(keyAccessControl, accessControlChecker(checker))
+			ec.Set(keyAccessControlChecker, accessControlChecker(checker))
+			ec.Set(keyAccessControlObjectVars, sdmaps.Ensure(ac.DefaultObjectVars))
 			return next(ec)
 		}
 	}
@@ -54,46 +57,21 @@ func (ac AccessControl) Apply(app *echo.Echo) error {
 	return nil
 }
 
-func AccessControlCheck(ctx context.Context, ec echo.Context, token Token, object, action string) error {
-	checker := MustGet[accessControlChecker](ec, keyAccessControl)
-	return checker(ctx, ec, token, object, action)
-}
-
-func ObjectExpand(object string, dataOrMapper any) string {
-	if dataOrMapper == nil {
-		return object
-	}
-	switch x := dataOrMapper.(type) {
-	case func(string) string:
-		if x == nil {
-			return object
+func AccessControlCheck(ctx context.Context, ec echo.Context, token Token, object Object, action string) error {
+	checker := MustGet[accessControlChecker](ec, keyAccessControlChecker)
+	defaultObjectVars := MustGet[map[string]string](ec, keyAccessControlObjectVars)
+	object1 := object.Expand(func(k string) string {
+		v := ec.QueryParam(k)
+		if v == "" {
+			v = ec.Param(k)
 		}
-		return sdstrings.ExpandShellLike(object, x)
-	case map[string]string:
-		return sdstrings.ExpandShellLikeMap(object, x)
-	default:
-		panic(sderr.New("illegal dataOrMapper"))
-	}
-}
-
-func ObjectsExpand(objects []string, dataOrMapper any) []string {
-	if dataOrMapper == nil {
-		return slices.Clone(objects)
-	}
-	switch x := dataOrMapper.(type) {
-	case func(string) string:
-		if x == nil {
-			return slices.Clone(objects)
+		if v == "" {
+			v0 := ec.Get(k)
+			if v0 != nil {
+				v = fmt.Sprintf("%v", v0)
+			}
 		}
-		return lo.Map(objects, func(object string, _ int) string {
-			return sdstrings.ExpandShellLike(object, x)
-		})
-	case map[string]string:
-		return lo.Map(objects, func(object string, _ int) string {
-			return sdstrings.ExpandShellLikeMap(object, x)
-		})
-	default:
-		panic(sderr.New("illegal dataOrMapper"))
-	}
-
+		return v
+	}, defaultObjectVars)
+	return checker(ctx, ec, token, object1, action)
 }

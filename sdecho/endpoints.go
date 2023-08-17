@@ -2,16 +2,15 @@ package sdecho
 
 import (
 	"context"
-	"fmt"
 	"github.com/gaorx/stardust5/sderr"
 	"github.com/gaorx/stardust5/sdreflect"
+	"github.com/gaorx/stardust5/sdslog"
 	"github.com/gaorx/stardust5/sdstrings"
 	"github.com/gaorx/stardust5/sdurl"
 	"github.com/gaorx/stardust5/sdvalidator"
 	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
 	"github.com/samber/lo"
-	"log/slog"
 	"net/http"
 	"reflect"
 	"slices"
@@ -22,7 +21,7 @@ import (
 type Endpoint struct {
 	Methods     []string
 	Path        string
-	Object      string
+	Object      Object
 	Func        any
 	Middlewares []echo.MiddlewareFunc
 	funcVal     reflect.Value
@@ -32,14 +31,14 @@ type Endpoint struct {
 type Page struct {
 	Method      string
 	Path        string
-	Object      string
+	Object      Object
 	Func        any
 	Middlewares []echo.MiddlewareFunc
 }
 
 type API struct {
 	Path        string
-	Object      string
+	Object      Object
 	Func        any
 	Middlewares []echo.MiddlewareFunc
 }
@@ -69,9 +68,9 @@ type CrudAPI[T Record[ID], ID RecordID, F any] struct {
 	Delete      func(echo.Context, ID) error
 	Get         func(echo.Context, ID) (T, error)
 	Find        func(echo.Context, F, Pagination) (*FindResult[T, ID], error)
-	Object      string
-	ObjectR     string
-	ObjectW     string
+	Object      Object
+	ObjectR     Object
+	ObjectW     Object
 	Middlewares []echo.MiddlewareFunc
 	PageSize    int
 }
@@ -100,8 +99,8 @@ func (api API) ToEndpoint() Endpoint {
 }
 
 func (api CrudAPI[T, ID, F]) ToEndpoints() []Endpoint {
-	selectObject := func(first, second string) string {
-		if first != "" {
+	selectObject := func(first, second Object) Object {
+		if !first.IsEmpty() {
 			return first
 		}
 		return second
@@ -240,7 +239,7 @@ func (endpoint *Endpoint) render(ec echo.Context) error {
 	if err != nil {
 		return ResultErr(err).Write(ec, routes.ResultOptions)
 	}
-	err = AccessControlCheck(context.Background(), ec, token, endpoint.expandObject(ec), ActionCall)
+	err = AccessControlCheck(context.Background(), ec, token, endpoint.Object, ActionCall)
 	if err != nil {
 		return ResultErr(err).Write(ec, routes.ResultOptions)
 	}
@@ -285,7 +284,7 @@ func (endpoint *Endpoint) render(ec echo.Context) error {
 	if ok := lo.Try0(func() {
 		outVals = endpoint.funcVal.Call(inVals)
 	}); !ok {
-		slog.With("path", endpoint.Path).Error("call endpoint error")
+		sdslog.WithAttr("path", endpoint.Path).Error("call endpoint error")
 		return ResultErr(sderr.WithStack(ErrInternalServerError)).Write(ec, routes.ResultOptions)
 	}
 	res := outVals[0].Interface().(*Result)
@@ -293,22 +292,6 @@ func (endpoint *Endpoint) render(ec echo.Context) error {
 		res = ResultOk(nil)
 	}
 	return res.Write(ec, routes.ResultOptions)
-}
-
-func (endpoint *Endpoint) expandObject(ec echo.Context) string {
-	return ObjectExpand(endpoint.Object, func(k string) string {
-		v := ec.QueryParam(k)
-		if v == "" {
-			v = ec.Param(k)
-		}
-		if v == "" {
-			v0 := ec.Get(k)
-			if v0 != nil {
-				v = fmt.Sprintf("%v", v0)
-			}
-		}
-		return v
-	})
 }
 
 func isStructOrStructPtr(typ reflect.Type) bool {

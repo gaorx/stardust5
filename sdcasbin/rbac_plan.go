@@ -7,14 +7,15 @@ import (
 )
 
 type RbacPlan struct {
-	SuperRole string
-	Users     []User
-	Objects1  []Object
-	Objects2  []Object
-	Objects3  []Object
-	Grants1   []Grant
-	Grants2   []Grant
-	Grants3   []Grant
+	SuperRole    string
+	DisableCheck bool
+	Users        []User
+	Objects1     []Object
+	Objects2     []Object
+	Objects3     []Object
+	Grants1      []Grant
+	Grants2      []Grant
+	Grants3      []Grant
 }
 
 type User struct {
@@ -115,7 +116,8 @@ func (plan RbacPlan) Load(b *RbacEnforcerBuilder) {
 
 func (plan RbacPlan) ToRbac() (Rbac, error) {
 	staticRbac, err := NewStaticRbac([]RbacLoader{plan}, &RbacEnforcerBuilderOptions{
-		SuperuserId: plan.SuperRole,
+		DisableCheck: plan.DisableCheck,
+		SuperuserId:  plan.SuperRole,
 	})
 	if err != nil {
 		return nil, sderr.WithStack(err)

@@ -1,12 +1,12 @@
 package sdcasbin
 
 import (
-	"errors"
+	"github.com/gaorx/stardust5/sderr"
 )
 
 var (
-	ErrIllegalUserId   = errors.New("illegal user id")
-	ErrIllegalRoleId   = errors.New("illegal role id")
-	ErrIllegalObjectId = errors.New("illegal object id")
-	ErrIllegalAction   = errors.New("illegal action")
+	ErrIllegalUserId   = sderr.Sentinel("illegal user id")
+	ErrIllegalRoleId   = sderr.Sentinel("illegal role id")
+	ErrIllegalObjectId = sderr.Sentinel("illegal object id")
+	ErrIllegalAction   = sderr.Sentinel("illegal action")
 )
