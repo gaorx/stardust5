@@ -41,6 +41,10 @@ func Log(ctx context.Context, level Level, msg string, args ...any) {
 	L(nil).Log(ctx, level, msg, args...)
 }
 
+func LogAttrs(ctx context.Context, level Level, msg string, attrs ...Attr) {
+	L(nil).LogAttrs(ctx, level, msg, attrs...)
+}
+
 func Debug(msg string, args ...any) {
 	L(nil).Debug(msg, args...)
 }
