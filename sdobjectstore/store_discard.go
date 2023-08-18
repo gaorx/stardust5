@@ -5,7 +5,7 @@ import (
 )
 
 var (
-	Discard Store = discard{}
+	Discard Interface = discard{}
 )
 
 type discard struct {

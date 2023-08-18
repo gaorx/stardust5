@@ -36,6 +36,11 @@ func (bp *Blueprint) IsFinalized() bool {
 	return bp.finalized
 }
 
+func (bp *Blueprint) MustFinalize() *Blueprint {
+	lo.Must0(bp.Finalize())
+	return bp
+}
+
 func (bp *Blueprint) Finalize() error {
 	if bp.finalized {
 		return nil

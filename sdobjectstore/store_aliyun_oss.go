@@ -24,7 +24,7 @@ type aliyunOss struct {
 	internalPrefix string
 }
 
-func NewAliyunOSS(opts *AliyunOssOptions) (Store, error) {
+func NewAliyunOSS(opts *AliyunOssOptions) (Interface, error) {
 	opts1 := lo.FromPtr(opts)
 	if opts1.Bucket == "" {
 		return nil, sderr.New("no bucket")

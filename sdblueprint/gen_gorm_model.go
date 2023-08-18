@@ -126,8 +126,8 @@ func (g GormModel) GenerateTo(buffs *sdcodegen.Buffers, bp *Blueprint) error {
 	return nil
 }
 
-func onGormHeader(w sdcodegen.Writer, g *GormModel, _ *Blueprint) {
-	if g.WithQuery {
+func onGormHeader(w sdcodegen.Writer, g *GormModel, bp *Blueprint) {
+	if g.WithQuery && len(bp.queries) > 0 {
 		sdgengo.Header(w, w.Filename(), g.Package, []string{
 			"github.com/gaorx/stardust5/sderr",
 			"gorm.io/gorm",

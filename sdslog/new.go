@@ -12,13 +12,9 @@ import (
 
 type Format string
 
-const (
-	Text Format = "text"
-	Json Format = "json"
-)
-
 type Options struct {
-	Format    Format   `json:"format" toml:"format" yaml:"format"`
+	Level     string   `json:"level" toml:"format" yaml:"format"`
+	Format    string   `json:"format" toml:"format" yaml:"format"`
 	Outputs   []string `json:"output" toml:"output" yaml:"output"`
 	AddSource bool     `json:"add_source" toml:"add_source" yaml:"add_source"`
 }
@@ -31,15 +27,36 @@ func New(opts *Options) (*slog.Logger, error) {
 		return nil, sderr.WithStack(err)
 	}
 
+	// slog options
 	slogOpts := &slog.HandlerOptions{AddSource: opts1.AddSource}
+
+	// level
+	switch strings.ToLower(opts1.Level) {
+	case "debug":
+		slogOpts.Level = slog.LevelDebug
+	case "info", "":
+		slogOpts.Level = slog.LevelInfo
+	case "warn":
+		slogOpts.Level = slog.LevelWarn
+	case "error":
+		slogOpts.Level = slog.LevelError
+	default:
+		return nil, sderr.NewWith("illegal level", opts1.Level)
+	}
+
+	// handler
+	var h slog.Handler
 	switch opts1.Format {
-	case "", Text:
-		return slog.New(slog.NewTextHandler(w, slogOpts)), nil
-	case Json:
-		return slog.New(slog.NewJSONHandler(w, slogOpts)), nil
+	case "", "text":
+		h = slog.NewTextHandler(w, slogOpts)
+	case "json":
+		h = slog.NewJSONHandler(w, slogOpts)
 	default:
 		return nil, sderr.NewWith("illegal format", opts1.Format)
 	}
+
+	// go
+	return slog.New(h), nil
 }
 
 func newWriter(outputs []string) (io.Writer, error) {

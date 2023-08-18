@@ -8,7 +8,7 @@ import (
 )
 
 type LoadOptions struct {
-	Store            sdobjectstore.Store
+	Store            sdobjectstore.Interface
 	StoreObjectName  string
 	StoreHttpUrl     bool
 	IgnoreIllegalRow bool

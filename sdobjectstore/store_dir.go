@@ -7,11 +7,11 @@ import (
 	"path/filepath"
 )
 
-type Dir struct {
-	Root string
+type dir struct {
+	root string
 }
 
-func (d Dir) Store(src Source, objectName string) (*Target, error) {
+func (d dir) Store(src Source, objectName string) (*Target, error) {
 	if src == nil {
 		return nil, sderr.New("nil source")
 	}
@@ -21,7 +21,7 @@ func (d Dir) Store(src Source, objectName string) (*Target, error) {
 		return nil, err
 	}
 
-	absRoot, err := filepath.Abs(d.Root)
+	absRoot, err := filepath.Abs(d.root)
 	if err != nil {
 		return nil, sderr.WithStack(err)
 	}

@@ -21,9 +21,9 @@ func New(opts *Options) (Store, error) {
 	opts1 := lo.FromPtr(opts)
 	switch strings.ToLower(opts1.Type) {
 	case "discard":
-		return Discard, nil
+		return Store{Discard}, nil
 	case "dir", "directory":
-		return Dir{Root: opts1.Root}, nil
+		return Store{dir{root: opts1.Root}}, nil
 	case "aliyun_oss", "aliyun-oss", "aliyunoss":
 		aoss, err := NewAliyunOSS(&AliyunOssOptions{
 			Endpoint:       opts1.Endpoint,
@@ -34,10 +34,10 @@ func New(opts *Options) (Store, error) {
 			InternalPrefix: opts1.InternalPrefix,
 		})
 		if err != nil {
-			return nil, sderr.WithStack(err)
+			return Store{nil}, sderr.WithStack(err)
 		}
-		return aoss, nil
+		return Store{aoss}, nil
 	default:
-		return nil, sderr.NewWith("illegal type", opts1.Type)
+		return Store{nil}, sderr.NewWith("illegal type", opts1.Type)
 	}
 }
