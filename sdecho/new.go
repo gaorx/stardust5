@@ -22,18 +22,18 @@ type Options struct {
 	ErrorHandler echo.HTTPErrorHandler
 }
 
-func New(opts *Options) *echo.Echo {
+func New(opts *Options) Echo {
 	opts1 := lo.FromPtr(opts)
 	if opts1.ErrorHandler == nil {
 		opts1.ErrorHandler = defaultHttpErrorHandler
 	}
-	app := echo.New()
-	app.Debug = opts1.DebugMode
-	app.HideBanner = true
-	app.HidePort = true
-	app.Use(loggingRecover(opts1.LogSkipper))
-	app.HTTPErrorHandler = opts1.ErrorHandler
-	return app
+	e := echo.New()
+	e.Debug = opts1.DebugMode
+	e.HideBanner = true
+	e.HidePort = true
+	e.Use(loggingRecover(opts1.LogSkipper))
+	e.HTTPErrorHandler = opts1.ErrorHandler
+	return E(e)
 }
 
 func defaultHttpErrorHandler(err error, c echo.Context) {

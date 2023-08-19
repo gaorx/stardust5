@@ -305,7 +305,7 @@ func onGormQuery(w sdcodegen.Writer, g *GormModel, _ *Blueprint, q Query) {
 			w.I(1).FL("var r %s", q.Result().Type())
 			w.I(1).FL(withContext("dbr := tx.Raw(%s%s).Scan(&r)"), strconv.Quote(q.SQL()), joinNamedParams())
 			w.I(1).FL("if dbr.Error != nil {")
-			w.I(2).FL("return 0, sderr.WithStack(dbr.Error)")
+			w.I(2).FL("return r, sderr.WithStack(dbr.Error)")
 			w.I(1).FL("}")
 			w.I(1).FL("return r, nil")
 		}).NL()
