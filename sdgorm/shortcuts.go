@@ -2,6 +2,7 @@ package sdgorm
 
 import (
 	"database/sql"
+	"fmt"
 	"github.com/samber/lo"
 	"gorm.io/gorm"
 )
@@ -17,6 +18,15 @@ func Transaction[R any](db *gorm.DB, action func(tx *gorm.DB) (R, error), opts .
 		return nil
 	}, opts...)
 	return r, err
+}
+
+func Raw[T any](tx *gorm.DB, q string, values ...any) (T, error) {
+	var r T
+	dbr := tx.Raw(q, values...).Scan(&r)
+	if dbr.Error != nil {
+		return r, dbr.Error
+	}
+	return r, nil
 }
 
 func First[T any](tx *gorm.DB, conds ...any) (T, error) {
@@ -46,8 +56,8 @@ func Take[T any](tx *gorm.DB, conds ...any) (T, error) {
 	return r, nil
 }
 
-func Find[T any](tx *gorm.DB, conds ...any) ([]T, error) {
-	var r []T
+func Find[T any](tx *gorm.DB, conds ...any) (T, error) {
+	var r T
 	dbr := tx.Find(&r, conds...)
 	if dbr.Error != nil {
 		return r, dbr.Error
@@ -64,6 +74,15 @@ func Scan[T any](tx *gorm.DB) (T, error) {
 	return r, nil
 }
 
+func Exists[T any](tx *gorm.DB, conds ...any) (bool, error) {
+	q := tx.ToSQL(func(tx1 *gorm.DB) *gorm.DB {
+		var r T
+		return tx1.Find(&r, conds...)
+	})
+	q = fmt.Sprintf("SELECT EXISTS(%s)", q)
+	return Raw[bool](tx, q)
+}
+
 func Create(tx *gorm.DB, row any) (int64, error) {
 	dbr := tx.Create(row)
 	if dbr.Error != nil {
@@ -72,13 +91,13 @@ func Create(tx *gorm.DB, row any) (int64, error) {
 	return dbr.RowsAffected, nil
 }
 
-func CreateTake[T any](tx *gorm.DB, row T, q any, args ...any) (T, error) {
+func CreateAndFind[T any](tx *gorm.DB, row T, q any, args ...any) (T, error) {
 	var err error
 	_, err = Create(tx, row)
 	if err != nil {
 		return lo.Empty[T](), err
 	}
-	created, err := Take[T](tx, append([]any{q}, args...)...)
+	created, err := Find[T](tx, append([]any{q}, args...)...)
 	if err != nil {
 		return lo.Empty[T](), err
 	}
@@ -101,12 +120,12 @@ func Modify[T any](tx *gorm.DB, modifier func(T) T, q any, args ...any) (int64, 
 	return dbr.RowsAffected, nil
 }
 
-func ModifyTake[T any](tx *gorm.DB, modifier func(T) T, q any, args ...any) (T, error) {
+func ModifyAndFind[T any](tx *gorm.DB, modifier func(T) T, q any, args ...any) (T, error) {
 	_, err := Modify[T](tx, modifier, q, args...)
 	if err != nil {
 		return lo.Empty[T](), err
 	}
-	return Take[T](tx, append([]any{q}, args...)...)
+	return Find[T](tx, append([]any{q}, args...)...)
 }
 
 func UpdateColumns(tx *gorm.DB, model any, colVals map[string]any, q any, args ...any) (int64, error) {
@@ -125,10 +144,10 @@ func UpdateColumns(tx *gorm.DB, model any, colVals map[string]any, q any, args .
 	return dbr.RowsAffected, nil
 }
 
-func UpdateColumnsTake[T any](tx *gorm.DB, colVals map[string]any, q any, args ...any) (T, error) {
+func UpdateColumnsAndFind[T any](tx *gorm.DB, colVals map[string]any, q any, args ...any) (T, error) {
 	_, err := UpdateColumns(tx, lo.Empty[T](), colVals, q, args...)
 	if err != nil {
 		return lo.Empty[T](), err
 	}
-	return Take[T](tx, append([]any{q}, args...)...)
+	return Find[T](tx, append([]any{q}, args...)...)
 }

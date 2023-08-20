@@ -30,7 +30,7 @@ func TestTransaction(t *testing.T) {
 			assert.NoError(t, dbr.Error)
 			dbr = tx.Create(&u1)
 			assert.NoError(t, dbr.Error)
-			ul0, err0 := Find[*user](tx.Where("id == ? OR id == ?", u0.Id, u1.Id).Order("id ASC"))
+			ul0, err0 := Find[[]*user](tx.Where("id == ? OR id == ?", u0.Id, u1.Id).Order("id ASC"))
 			assert.NoError(t, err0)
 			return ul0, nil
 		})
