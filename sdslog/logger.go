@@ -40,6 +40,27 @@ func (l Logger) WithAttr(k string, v any) Logger {
 	return Logger{l.Logger.With(k, v)}
 }
 
+func (l Logger) WithCall(call string) Logger {
+	if call == "" {
+		return l
+	}
+	return l.WithAttr("call", call)
+}
+
+func (l Logger) WithFunc(f string) Logger {
+	if f == "" {
+		return l
+	}
+	return l.WithAttr("func", f)
+}
+
+func (l Logger) WithAPI(api string) Logger {
+	if api == "" {
+		return l
+	}
+	return l.WithAttr("api", api)
+}
+
 func (l Logger) Debugf(format string, a ...any) {
 	l.Debug(fmt.Sprintf(format, a...))
 }

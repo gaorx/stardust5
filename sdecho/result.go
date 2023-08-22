@@ -160,13 +160,22 @@ func ResultOk(data any) *Result {
 	return &Result{kind: rkJson, Data: data, Error: nil}
 }
 
-func ResultErr(err any) *Result {
+func ResultErr(err any, msgs ...string) *Result {
+	if len(msgs) > 0 {
+		if err0, ok := err.(error); ok {
+			if err0 == nil {
+				err = msgs[0]
+			} else {
+				err = sderr.Wrap(err0, msgs[0])
+			}
+		}
+	}
 	return &Result{kind: rkJson, Data: nil, Error: sderr.AsErr(err)}
 }
 
-func ResultOf(data any, err any) *Result {
+func ResultOf(data any, err any, errMsgs ...string) *Result {
 	if err != nil {
-		return ResultErr(err)
+		return ResultErr(err, errMsgs...)
 	} else {
 		return ResultOk(data)
 	}

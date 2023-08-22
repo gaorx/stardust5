@@ -37,6 +37,18 @@ func WithAttr(k string, v any) Logger {
 	return L(nil).WithAttr(k, v)
 }
 
+func WithCall(call string) Logger {
+	return L(nil).WithCall(call)
+}
+
+func WithFunc(f string) Logger {
+	return L(nil).WithFunc(f)
+}
+
+func WithAPI(api string) Logger {
+	return L(nil).WithAPI(api)
+}
+
 func Log(ctx context.Context, level Level, msg string, args ...any) {
 	L(nil).Log(ctx, level, msg, args...)
 }

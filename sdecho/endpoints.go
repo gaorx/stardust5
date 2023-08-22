@@ -235,6 +235,7 @@ func (endpoint *Endpoint) prepare() error {
 
 func (endpoint *Endpoint) render(ec echo.Context) error {
 	routes := MustGet[*Routes](ec, keyRoutes)
+
 	token, err := TokenDecode(context.Background(), ec)
 	if err != nil {
 		return ResultErr(err).Write(ec, routes.ResultOptions)
