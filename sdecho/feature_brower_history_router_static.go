@@ -11,13 +11,18 @@ import (
 type BrowserHistoryRouterStatic struct {
 	PathPrefix string
 	Fsys       fs.FS
+	Root       string
 }
 
 func (d BrowserHistoryRouterStatic) Apply(app *echo.Echo) error {
+	fsys, err := getSubFsys(d.Fsys, d.Root)
+	if err != nil {
+		return sderr.WithStack(err)
+	}
 	app.Add(
 		http.MethodGet,
 		d.PathPrefix+"*",
-		browserHistoryRouterStaticDirectoryHandler(d.Fsys, "index.html", false),
+		browserHistoryRouterStaticDirectoryHandler(fsys, "index.html", false),
 	)
 	return nil
 }
@@ -42,4 +47,18 @@ func browserHistoryRouterStaticDirectoryHandler(fsys fs.FS, recoveryFilename str
 		}
 		return err
 	}
+}
+
+func getSubFsys(fsys fs.FS, root string) (fs.FS, error) {
+	var fsys1 fs.FS
+	if root != "" {
+		sub, err := fs.Sub(fsys, root)
+		if err != nil {
+			return nil, sderr.WrapWith(err, "get sub dir error", root)
+		}
+		fsys1 = sub
+	} else {
+		fsys1 = fsys
+	}
+	return fsys1, nil
 }

@@ -14,13 +14,18 @@ import (
 type NoRedirectStatic struct {
 	PathPrefix string
 	Fsys       fs.FS
+	Root       string
 }
 
 func (d NoRedirectStatic) Apply(app *echo.Echo) error {
+	fsys, err := getSubFsys(d.Fsys, d.Root)
+	if err != nil {
+		return sderr.WithStack(err)
+	}
 	app.Add(
 		http.MethodGet,
 		d.PathPrefix+"*",
-		noRedirectStaticDirectoryHandler(d.Fsys, false),
+		noRedirectStaticDirectoryHandler(fsys, false),
 	)
 	return nil
 }
