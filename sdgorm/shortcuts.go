@@ -56,11 +56,11 @@ func Take[T any](tx *gorm.DB, conds ...any) (T, error) {
 	return r, nil
 }
 
-func Find[T any](tx *gorm.DB, conds ...any) (T, error) {
-	var r T
+func Find[T any](tx *gorm.DB, conds ...any) ([]T, error) {
+	var r []T
 	dbr := tx.Find(&r, conds...)
 	if dbr.Error != nil {
-		return r, dbr.Error
+		return nil, dbr.Error
 	}
 	return r, nil
 }
@@ -91,13 +91,13 @@ func Create(tx *gorm.DB, row any) (int64, error) {
 	return dbr.RowsAffected, nil
 }
 
-func CreateAndFind[T any](tx *gorm.DB, row T, q any, args ...any) (T, error) {
+func CreateAndTake[T any](tx *gorm.DB, row T, q any, args ...any) (T, error) {
 	var err error
 	_, err = Create(tx, row)
 	if err != nil {
 		return lo.Empty[T](), err
 	}
-	created, err := Find[T](tx, append([]any{q}, args...)...)
+	created, err := Take[T](tx, append([]any{q}, args...)...)
 	if err != nil {
 		return lo.Empty[T](), err
 	}
@@ -120,12 +120,12 @@ func Modify[T any](tx *gorm.DB, modifier func(T) T, q any, args ...any) (int64, 
 	return dbr.RowsAffected, nil
 }
 
-func ModifyAndFind[T any](tx *gorm.DB, modifier func(T) T, q any, args ...any) (T, error) {
+func ModifyAndTake[T any](tx *gorm.DB, modifier func(T) T, q any, args ...any) (T, error) {
 	_, err := Modify[T](tx, modifier, q, args...)
 	if err != nil {
 		return lo.Empty[T](), err
 	}
-	return Find[T](tx, append([]any{q}, args...)...)
+	return Take[T](tx, append([]any{q}, args...)...)
 }
 
 func UpdateColumns(tx *gorm.DB, model any, colVals map[string]any, q any, args ...any) (int64, error) {
@@ -144,10 +144,10 @@ func UpdateColumns(tx *gorm.DB, model any, colVals map[string]any, q any, args .
 	return dbr.RowsAffected, nil
 }
 
-func UpdateColumnsAndFind[T any](tx *gorm.DB, colVals map[string]any, q any, args ...any) (T, error) {
+func UpdateColumnsAndTake[T any](tx *gorm.DB, colVals map[string]any, q any, args ...any) (T, error) {
 	_, err := UpdateColumns(tx, lo.Empty[T](), colVals, q, args...)
 	if err != nil {
 		return lo.Empty[T](), err
 	}
-	return Find[T](tx, append([]any{q}, args...)...)
+	return Take[T](tx, append([]any{q}, args...)...)
 }
