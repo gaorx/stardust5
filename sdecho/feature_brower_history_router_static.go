@@ -36,7 +36,7 @@ func browserHistoryRouterStaticDirectoryHandler(fsys fs.FS, recoveryFilename str
 		if err != nil {
 			if httpErr, ok := sderr.AsT[*echo.HTTPError](err); ok && httpErr != nil && httpErr.Code == http.StatusNotFound {
 				// 实际上只有.html/.htm扩展名的文件会重新解析到recoveryFilename上，对于.js, .css等文件不进行recover
-				if !slices.Contains([]string{".html", ".htm"}, path.Ext(ec.Param("*"))) {
+				if !slices.Contains([]string{".html", ".htm", ""}, path.Ext(ec.Param("*"))) {
 					return err
 				}
 
