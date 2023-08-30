@@ -50,10 +50,7 @@ func (routes Routes) Apply(app *echo.Echo) error {
 
 	// add routes
 	for _, endpoint := range endpoints {
-		endpoint1 := *endpoint
-		h := func(ec echo.Context) error {
-			return endpoint1.render(ec)
-		}
+		h := (*endpoint).handler
 		if slices.Contains(endpoint.Methods, "ANY") {
 			app.Any(pathOf(endpoint.Path), h, endpoint.Middlewares...)
 		} else {

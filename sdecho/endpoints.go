@@ -24,8 +24,7 @@ type Endpoint struct {
 	Object      Object
 	Func        any
 	Middlewares []echo.MiddlewareFunc
-	funcVal     reflect.Value
-	inTypes     []reflect.Type
+	handler     echo.HandlerFunc
 }
 
 type Page struct {
@@ -206,34 +205,52 @@ func (endpoint *Endpoint) prepare() error {
 		endpoint.Methods = []string{"ANY"}
 	}
 
-	// func
-	if endpoint.Func == nil {
-		return sderr.NewWith("no func in endpoint", endpoint.Path)
+	h, err := endpoint.ToHandler()
+	if err != nil {
+		return sderr.WithStack(err)
 	}
-	funcVal := sdreflect.ValueOf(endpoint.Func)
-	inTypes, outTypes := sdreflect.InOutTypes(funcVal.Type())
-	if len(outTypes) != 1 || outTypes[0] != sdreflect.T[*Result]() {
-		return sderr.NewWith("illegal result type", endpoint.Path)
-	}
-	numFreeParam := 0
-	for _, inType := range inTypes {
-		if !slices.Contains([]reflect.Type{
-			sdreflect.T[echo.Context](),
-			sdreflect.T[Context](),
-			sdreflect.T[Token](),
-			sdreflect.T[*Token](),
-		}, inType) {
-			numFreeParam += 1
-		}
-	}
-	if numFreeParam > 1 {
-		return sderr.NewWith("illegal argument type", endpoint.Path)
-	}
-	endpoint.funcVal, endpoint.inTypes = funcVal, inTypes
+	endpoint.handler = h
 	return nil
 }
 
-func (endpoint *Endpoint) render(ec echo.Context) error {
+func (endpoint *Endpoint) ToHandler() (echo.HandlerFunc, error) {
+	if endpoint.Func == nil {
+		return nil, sderr.New("nil func")
+	} else if h, ok := endpoint.Func.(echo.HandlerFunc); ok {
+		return h, nil
+	} else if h, ok := endpoint.Func.(func(ec echo.Context) error); ok {
+		return h, nil
+	} else if h, ok := endpoint.Func.(func(ec Context) error); ok {
+		return func(ec echo.Context) error {
+			return h(C(ec))
+		}, nil
+	} else {
+		funcVal := sdreflect.ValueOf(endpoint.Func)
+		inTypes, outTypes := sdreflect.InOutTypes(funcVal.Type())
+		if len(outTypes) != 1 || outTypes[0] != sdreflect.T[*Result]() {
+			return nil, sderr.NewWith("illegal result type", endpoint.Path)
+		}
+		numFreeParam := 0
+		for _, inType := range inTypes {
+			if !slices.Contains([]reflect.Type{
+				sdreflect.T[echo.Context](),
+				sdreflect.T[Context](),
+				sdreflect.T[Token](),
+				sdreflect.T[*Token](),
+			}, inType) {
+				numFreeParam += 1
+			}
+		}
+		if numFreeParam > 1 {
+			return nil, sderr.NewWith("illegal argument type", endpoint.Path)
+		}
+		return func(ec echo.Context) error {
+			return endpoint.renderDefault(ec, funcVal, inTypes)
+		}, nil
+	}
+}
+
+func (endpoint *Endpoint) renderDefault(ec echo.Context, funcVal reflect.Value, inTypes []reflect.Type) error {
 	routes := MustGet[*Routes](ec, keyRoutes)
 
 	token, err := TokenDecode(context.Background(), ec)
@@ -245,7 +262,7 @@ func (endpoint *Endpoint) render(ec echo.Context) error {
 		return ResultErr(err).Write(ec, routes.ResultOptions)
 	}
 	var inVals, outVals []reflect.Value
-	for _, inTyp := range endpoint.inTypes {
+	for _, inTyp := range inTypes {
 		switch inTyp {
 		case sdreflect.T[echo.Context]():
 			inVals = append(inVals, reflect.ValueOf(ec))
@@ -283,7 +300,7 @@ func (endpoint *Endpoint) render(ec echo.Context) error {
 		}
 	}
 	if ok := lo.Try0(func() {
-		outVals = endpoint.funcVal.Call(inVals)
+		outVals = funcVal.Call(inVals)
 	}); !ok {
 		sdslog.WithAttr("path", endpoint.Path).Error("call endpoint error")
 		return ResultErr(sderr.WithStack(ErrInternalServerError)).Write(ec, routes.ResultOptions)
