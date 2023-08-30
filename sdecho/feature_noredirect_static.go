@@ -65,7 +65,9 @@ func noRedirectStaticDirectory(
 
 	candidateNames := []string{toName(p, "")}
 	for _, trimPathPrefix := range trimPathPrefixes {
-		candidateNames = append(candidateNames, toName(p, trimPathPrefix))
+		if trimPathPrefix != "" {
+			candidateNames = append(candidateNames, toName(p, trimPathPrefix))
+		}
 	}
 	fi, name, err := fsStatFirst(fsys, candidateNames)
 	if err != nil {

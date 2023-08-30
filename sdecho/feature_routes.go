@@ -3,11 +3,13 @@ package sdecho
 import (
 	"github.com/gaorx/stardust5/sderr"
 	"github.com/gaorx/stardust5/sdreflect"
+	"github.com/gaorx/stardust5/sdurl"
 	"github.com/labstack/echo/v4"
 	"slices"
 )
 
 type Routes struct {
+	BasePath  string
 	Endpoints []any
 	*ResultOptions
 }
@@ -38,6 +40,14 @@ func (routes Routes) Apply(app *echo.Echo) error {
 		}
 	}
 
+	pathOf := func(p string) string {
+		if routes.BasePath != "" {
+			return sdurl.JoinPath(routes.BasePath, p)
+		} else {
+			return p
+		}
+	}
+
 	// add routes
 	for _, endpoint := range endpoints {
 		endpoint1 := *endpoint
@@ -45,10 +55,10 @@ func (routes Routes) Apply(app *echo.Echo) error {
 			return endpoint1.render(ec)
 		}
 		if slices.Contains(endpoint.Methods, "ANY") {
-			app.Any(endpoint.Path, h, endpoint.Middlewares...)
+			app.Any(pathOf(endpoint.Path), h, endpoint.Middlewares...)
 		} else {
 			for _, method := range endpoint.Methods {
-				app.Add(method, endpoint.Path, h, endpoint.Middlewares...)
+				app.Add(method, pathOf(endpoint.Path), h, endpoint.Middlewares...)
 			}
 		}
 	}
