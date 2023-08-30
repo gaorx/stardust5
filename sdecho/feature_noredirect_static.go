@@ -12,9 +12,10 @@ import (
 )
 
 type NoRedirectStatic struct {
-	PathPrefix string
-	Fsys       fs.FS
-	Root       string
+	PathPrefix       string
+	Fsys             fs.FS
+	Root             string
+	TrimPathPrefixes []string
 }
 
 func (d NoRedirectStatic) Apply(app *echo.Echo) error {
@@ -25,7 +26,7 @@ func (d NoRedirectStatic) Apply(app *echo.Echo) error {
 	app.Add(
 		http.MethodGet,
 		d.PathPrefix+"*",
-		noRedirectStaticDirectoryHandler(fsys, false),
+		noRedirectStaticDirectoryHandler(fsys, d.TrimPathPrefixes, false),
 	)
 	return nil
 }
@@ -34,13 +35,18 @@ const (
 	defaultIndexPage = "index.html"
 )
 
-func noRedirectStaticDirectoryHandler(fsys fs.FS, disablePathUnescaping bool) echo.HandlerFunc {
+func noRedirectStaticDirectoryHandler(fsys fs.FS, trimPathPrefixes []string, disablePathUnescaping bool) echo.HandlerFunc {
 	return func(ec echo.Context) error {
-		return noRedirectStaticDirectory(ec, fsys, disablePathUnescaping)
+		return noRedirectStaticDirectory(ec, fsys, trimPathPrefixes, disablePathUnescaping)
 	}
 }
 
-func noRedirectStaticDirectory(ec echo.Context, fsys fs.FS, disablePathUnescaping bool) error {
+func noRedirectStaticDirectory(
+	ec echo.Context,
+	fsys fs.FS,
+	trimPathPrefixes []string,
+	disablePathUnescaping bool,
+) error {
 	p := ec.Param("*")
 	if !disablePathUnescaping {
 		tmpPath, err := url.PathUnescape(p)
@@ -50,8 +56,18 @@ func noRedirectStaticDirectory(ec echo.Context, fsys fs.FS, disablePathUnescapin
 		p = tmpPath
 	}
 
-	name := filepath.ToSlash(filepath.Clean(strings.TrimPrefix(p, "/")))
-	fi, err := fs.Stat(fsys, name)
+	toName := func(p string, trimPrefix string) string {
+		if trimPrefix != "" {
+			p = strings.TrimPrefix(p, strings.TrimPrefix(trimPrefix, "/"))
+		}
+		return filepath.ToSlash(filepath.Clean(strings.TrimPrefix(p, "/")))
+	}
+
+	candidateNames := []string{toName(p, "")}
+	for _, trimPathPrefix := range trimPathPrefixes {
+		candidateNames = append(candidateNames, toName(p, trimPathPrefix))
+	}
+	fi, name, err := fsStatFirst(fsys, candidateNames)
 	if err != nil {
 		return echo.ErrNotFound
 	}
@@ -88,4 +104,19 @@ func fsFile2(ec echo.Context, file string, fsys fs.FS) error {
 	}
 	http.ServeContent(ec.Response(), ec.Request(), fi.Name(), fi.ModTime(), ff)
 	return nil
+}
+
+func fsStatFirst(fsys fs.FS, names []string) (fs.FileInfo, string, error) {
+	var firstErr error = nil
+	for _, name := range names {
+		fi, err := fs.Stat(fsys, name)
+		if err != nil {
+			if firstErr == nil {
+				firstErr = err
+			}
+		} else {
+			return fi, name, nil
+		}
+	}
+	return nil, "", firstErr
 }

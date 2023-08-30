@@ -6,12 +6,15 @@ import (
 	"io"
 	"io/fs"
 	"net/http"
+	"path"
+	"slices"
 )
 
 type BrowserHistoryRouterStatic struct {
-	PathPrefix string
-	Fsys       fs.FS
-	Root       string
+	PathPrefix       string
+	Fsys             fs.FS
+	Root             string
+	TrimPathPrefixes []string
 }
 
 func (d BrowserHistoryRouterStatic) Apply(app *echo.Echo) error {
@@ -22,16 +25,22 @@ func (d BrowserHistoryRouterStatic) Apply(app *echo.Echo) error {
 	app.Add(
 		http.MethodGet,
 		d.PathPrefix+"*",
-		browserHistoryRouterStaticDirectoryHandler(fsys, "index.html", false),
+		browserHistoryRouterStaticDirectoryHandler(fsys, "index.html", d.TrimPathPrefixes, false),
 	)
 	return nil
 }
 
-func browserHistoryRouterStaticDirectoryHandler(fsys fs.FS, recoveryFilename string, disablePathUnescaping bool) echo.HandlerFunc {
+func browserHistoryRouterStaticDirectoryHandler(fsys fs.FS, recoveryFilename string, trimPathPrefixes []string, disablePathUnescaping bool) echo.HandlerFunc {
 	return func(ec echo.Context) error {
-		err := noRedirectStaticDirectory(ec, fsys, disablePathUnescaping)
+		err := noRedirectStaticDirectory(ec, fsys, trimPathPrefixes, disablePathUnescaping)
 		if err != nil {
 			if httpErr, ok := sderr.AsT[*echo.HTTPError](err); ok && httpErr != nil && httpErr.Code == http.StatusNotFound {
+				// 实际上只有.html/.htm扩展名的文件会重新解析到recoveryFilename上，对于.js, .css等文件不进行recover
+				if !slices.Contains([]string{".html", ".htm"}, path.Ext(ec.Param("*"))) {
+					return err
+				}
+
+				// recover
 				f, err1 := fsys.Open(recoveryFilename)
 				if err1 == nil && f != nil {
 					defer func() { _ = f.Close() }()

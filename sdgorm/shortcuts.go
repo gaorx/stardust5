@@ -20,6 +20,14 @@ func Transaction[R any](db *gorm.DB, action func(tx *gorm.DB) (R, error), opts .
 	return r, err
 }
 
+func Exec(tx *gorm.DB, q string, values ...any) (int64, error) {
+	dbr := tx.Exec(q, values...)
+	if dbr.Error != nil {
+		return 0, dbr.Error
+	}
+	return dbr.RowsAffected, nil
+}
+
 func Raw[T any](tx *gorm.DB, q string, values ...any) (T, error) {
 	var r T
 	dbr := tx.Raw(q, values...).Scan(&r)
