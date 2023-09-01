@@ -126,41 +126,7 @@ func (o Object) String() string {
 }
 
 func (o Object) Expand(mapper any, others ...any) Object {
-	normalize := func(m any) func(string) string {
-		switch x := m.(type) {
-		case nil:
-			return nil
-		case func(string) string:
-			return x
-		case map[string]string:
-			return func(k string) string {
-				return x[k]
-			}
-		default:
-			panic(sderr.New("export access control object error"))
-		}
-	}
-	var finals []func(string) string
-	add := func(m any) {
-		if m1 := normalize(m); m1 != nil {
-			finals = append(finals, m1)
-		}
-	}
-	add(mapper)
-	lo.ForEach(others, func(x any, _ int) { add(x) })
-	if len(finals) <= 0 {
-		return o
-	}
-
-	merged := func(k string) string {
-		for _, m := range finals {
-			v := m(k)
-			if v != "" {
-				return v
-			}
-		}
-		return ""
-	}
+	merged := sdstrings.MergeExpandMappers(mapper, others...)
 	return O(
 		sdstrings.ExpandShellLike(o.id, merged),
 		lo.Map(o.tags, func(tag string, _ int) string {

@@ -3,6 +3,7 @@ package sdecho
 import (
 	"context"
 	"github.com/gaorx/stardust5/sdslices"
+	"github.com/gaorx/stardust5/sdstrings"
 	"github.com/labstack/echo/v4"
 )
 
@@ -50,10 +51,11 @@ func (item *MenuItem) Reify(ctx context.Context, ec echo.Context, token Token) *
 			return nil
 		}
 	}
+	mapper := contextExpandMapper(ec)
 	return &MenuItem{ // clone
 		Name:     item.Name,
-		Path:     item.Path,
-		Href:     item.Href,
+		Path:     sdstrings.ExpandShellLike(item.Path, mapper),
+		Href:     sdstrings.ExpandShellLike(item.Href, mapper),
 		Icon:     item.Icon,
 		Object:   item.Object,
 		Children: sdslices.Ensure(filteredChildren),

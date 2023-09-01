@@ -2,7 +2,6 @@ package sdecho
 
 import (
 	"context"
-	"fmt"
 	"github.com/gaorx/stardust5/sderr"
 	"github.com/gaorx/stardust5/sdmaps"
 	"github.com/labstack/echo/v4"
@@ -60,18 +59,6 @@ func (ac AccessControl) Apply(app *echo.Echo) error {
 func AccessControlCheck(ctx context.Context, ec echo.Context, token Token, object Object, action string) error {
 	checker := MustGet[accessControlChecker](ec, keyAccessControlChecker)
 	defaultObjectVars := MustGet[map[string]string](ec, keyAccessControlObjectVars)
-	object1 := object.Expand(func(k string) string {
-		v := ec.QueryParam(k)
-		if v == "" {
-			v = ec.Param(k)
-		}
-		if v == "" {
-			v0 := ec.Get(k)
-			if v0 != nil {
-				v = fmt.Sprintf("%v", v0)
-			}
-		}
-		return v
-	}, defaultObjectVars)
+	object1 := object.Expand(contextExpandMapper(ec), defaultObjectVars)
 	return checker(ctx, ec, token, object1, action)
 }
