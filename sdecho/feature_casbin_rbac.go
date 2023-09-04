@@ -8,11 +8,22 @@ import (
 
 type CasbinRbac struct {
 	Rbac              sdcasbin.Rbac
+	CheckToken        func(echo.Context, Token) (bool, error)
 	DefaultObjectVars map[string]string
 }
 
 func (ac CasbinRbac) Apply(app *echo.Echo) error {
+	checkToken := ac.CheckToken
 	checker := func(_ context.Context, ec echo.Context, token Token, object Object, action string) (bool, error) {
+		if checkToken != nil {
+			if ok, err := checkToken(ec, token); err != nil {
+				return false, err
+			} else {
+				if !ok {
+					return false, nil
+				}
+			}
+		}
 		if ac.Rbac == nil {
 			return false, nil
 		}
