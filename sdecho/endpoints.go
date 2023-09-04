@@ -22,6 +22,7 @@ type Endpoint struct {
 	Methods     []string
 	Path        string
 	Object      Object
+	Bare        bool // 跳过decode_token和access_control流程，直接调用func
 	Func        any
 	Middlewares []echo.MiddlewareFunc
 	handler     echo.HandlerFunc
@@ -31,6 +32,7 @@ type Page struct {
 	Method      string
 	Path        string
 	Object      Object
+	Bare        bool
 	Func        any
 	Middlewares []echo.MiddlewareFunc
 }
@@ -38,6 +40,7 @@ type Page struct {
 type API struct {
 	Path        string
 	Object      Object
+	Bare        bool
 	Func        any
 	Middlewares []echo.MiddlewareFunc
 }
@@ -82,6 +85,7 @@ func (p Page) ToEndpoint() Endpoint {
 		Methods:     []string{p.Method},
 		Path:        p.Path,
 		Object:      p.Object,
+		Bare:        p.Bare,
 		Func:        p.Func,
 		Middlewares: p.Middlewares,
 	}
@@ -92,6 +96,7 @@ func (api API) ToEndpoint() Endpoint {
 		Methods:     []string{http.MethodPost},
 		Path:        api.Path,
 		Object:      api.Object,
+		Bare:        api.Bare,
 		Func:        api.Func,
 		Middlewares: api.Middlewares,
 	}
@@ -252,14 +257,17 @@ func (endpoint *Endpoint) ToHandler() (echo.HandlerFunc, error) {
 
 func (endpoint *Endpoint) renderDefault(ec echo.Context, funcVal reflect.Value, inTypes []reflect.Type) error {
 	routes := MustGet[*Routes](ec, keyRoutes)
-
-	token, err := TokenDecode(context.Background(), ec)
-	if err != nil {
-		return ResultErr(err).Write(ec, routes.ResultOptions)
-	}
-	err = AccessControlCheck(context.Background(), ec, token, endpoint.Object, ActionCall)
-	if err != nil {
-		return ResultErr(err).Write(ec, routes.ResultOptions)
+	var token Token
+	if !endpoint.Bare {
+		token0, err := TokenDecode(context.Background(), ec)
+		if err != nil {
+			return ResultErr(err).Write(ec, routes.ResultOptions)
+		}
+		err = AccessControlCheck(context.Background(), ec, token0, endpoint.Object, ActionCall)
+		if err != nil {
+			return ResultErr(err).Write(ec, routes.ResultOptions)
+		}
+		token = token0
 	}
 	var inVals, outVals []reflect.Value
 	for _, inTyp := range inTypes {
