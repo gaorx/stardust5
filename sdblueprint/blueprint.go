@@ -7,6 +7,7 @@ import (
 	"github.com/gaorx/stardust5/sdreflect"
 	"github.com/samber/lo"
 	"io"
+	"reflect"
 )
 
 type Blueprint struct {
@@ -24,10 +25,25 @@ func New() *Blueprint {
 }
 
 func (bp *Blueprint) Add(protos ...any) *Blueprint {
-	for _, proto := range protos {
-		if proto != nil {
+	var add func(proto any)
+	add = func(proto any) {
+		if proto == nil {
+			return
+		}
+		protoVal := sdreflect.ValueOf(proto)
+		if protoVal.Kind() == reflect.Slice || protoVal.Kind() == reflect.Array {
+			n := protoVal.Len()
+			for i := 0; i < n; i++ {
+				proto0Val := protoVal.Index(i)
+				add(proto0Val.Interface())
+			}
+		} else {
 			bp.protos = append(bp.protos, proto)
 		}
+	}
+
+	for _, proto := range protos {
+		add(proto)
 	}
 	return bp
 }
