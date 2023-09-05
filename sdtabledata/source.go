@@ -31,14 +31,17 @@ func (src Source) IsTrimmed() bool {
 	return src.trimmed
 }
 
-func (src Source) Sub(sub string) Source {
-	if sub == "" || sub == "." {
-		return src
-	}
+func (src Source) Sub(subs ...string) Source {
 	src1 := src.Trim()
+	subs1 := []string{src1.Dir}
+	for _, sub := range subs {
+		if sub != "" && sub != "." {
+			subs1 = append(subs1, sub)
+		}
+	}
 	return Source{
 		Root: src1.Root,
-		Dir:  path.Join(src1.Dir, sub),
+		Dir:  path.Join(subs1...),
 	}.Trim()
 }
 
