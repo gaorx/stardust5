@@ -45,9 +45,13 @@ func (src Source) Sub(subs ...string) Source {
 	}.Trim()
 }
 
-func Dir(dirname string, subs ...string) Source {
+func FsDir(root fs.FS, subs ...string) Source {
 	return Source{
-		Root: os.DirFS(dirname),
+		Root: root,
 		Dir:  path.Join(subs...),
 	}
+}
+
+func OsDir(dirname string, subs ...string) Source {
+	return FsDir(os.DirFS(dirname), subs...)
 }
