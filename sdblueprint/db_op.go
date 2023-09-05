@@ -17,37 +17,32 @@ type FillDummyDataOptions struct {
 	TableIds []string
 }
 
-func (bp *Blueprint) CreateTableForMysql(db *gorm.DB, opts CreateTableOptions) error {
-	const sqlFilename = "all.gen.sql"
+func (bp *Blueprint) CreateTableForMysql(tx *gorm.DB, opts *CreateTableOptions) error {
+	opts1 := lo.FromPtr(opts)
+	const sqlFn = "all.gen.sql"
 	buffs, err := bp.Generate(MysqlDDL{
-		TableIds:      opts.TableIds,
-		DisableFK:     opts.DisableFK,
-		WithDrop:      opts.Drop,
+		TableIds:      opts1.TableIds,
+		DisableFK:     opts1.DisableFK,
+		WithDrop:      opts1.Drop,
 		WithoutCreate: false,
-		FileForCreate: sqlFilename,
+		FileForCreate: sqlFn,
 	})
 	if err != nil {
 		return sderr.WithStack(err)
 	}
-	code := buffs.Get(sqlFilename).String()
-	if code != "" {
-		err = db.Transaction(func(tx *gorm.DB) error {
-			var r any
-			dbr := tx.Raw(code).Scan(&r)
-			if dbr.Error != nil {
-				return dbr.Error
-			}
-			return nil
-		})
+	sqlSrc := buffs.Get(sqlFn).String()
+	if sqlSrc != "" {
+		_, err := sdgorm.Exec(tx, sqlSrc)
 		if err != nil {
-			return sderr.Wrap(err, "execute create table sql error")
+			return err
 		}
 	}
 	return nil
 }
 
-func (bp *Blueprint) FillDummyData(db *gorm.DB, opts FillDummyDataOptions) error {
-	tableIds := matchIds(bp.TableIds(), opts.TableIds)
+func (bp *Blueprint) FillDummyData(tx *gorm.DB, opts *FillDummyDataOptions) error {
+	opts1 := lo.FromPtr(opts)
+	tableIds := matchIds(bp.TableIds(), opts1.TableIds)
 	for _, tableId := range tableIds {
 		t := bp.Table(tableId)
 		if t == nil {
@@ -62,7 +57,7 @@ func (bp *Blueprint) FillDummyData(db *gorm.DB, opts FillDummyDataOptions) error
 		}
 		records = lo.Map(records, func(record DummyRecord, _ int) DummyRecord { return record.ToDB(t) })
 		for _, record := range records {
-			dbr := db.Table(t.NameForDB()).Create(map[string]any(record))
+			dbr := tx.Table(t.NameForDB()).Create(map[string]any(record))
 			if dbr.Error != nil {
 				return sderr.WrapWith(dbr.Error, "fill dummy data error", t.Id())
 			}
@@ -76,13 +71,15 @@ func (bp *Blueprint) MockDB(addr sdgorm.Address) error {
 	if err != nil {
 		return sderr.WithStack(err)
 	}
-	err = bp.CreateTableForMysql(db, CreateTableOptions{Drop: true, DisableFK: false})
-	if err != nil {
-		return sderr.WithStack(err)
-	}
-	err = bp.FillDummyData(db, FillDummyDataOptions{})
-	if err != nil {
-		return sderr.WithStack(err)
-	}
-	return nil
+	return db.Transaction(func(tx *gorm.DB) error {
+		err := bp.CreateTableForMysql(tx, &CreateTableOptions{Drop: true, DisableFK: false})
+		if err != nil {
+			return sderr.WithStack(err)
+		}
+		err = bp.FillDummyData(tx, &FillDummyDataOptions{})
+		if err != nil {
+			return sderr.WithStack(err)
+		}
+		return nil
+	})
 }
