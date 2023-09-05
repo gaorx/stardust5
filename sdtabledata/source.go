@@ -7,8 +7,9 @@ import (
 )
 
 type Source struct {
-	Root fs.FS
-	Sub  string
+	Root    fs.FS
+	Dir     string
+	trimmed bool
 }
 
 func (src Source) IsNil() bool {
@@ -16,15 +17,34 @@ func (src Source) IsNil() bool {
 }
 
 func (src Source) Trim() Source {
-	return Source{
-		Root: src.Root,
-		Sub:  trimDir(src.Sub),
+	if src.trimmed {
+		return src
 	}
+	return Source{
+		Root:    src.Root,
+		Dir:     trimDir(src.Dir),
+		trimmed: true,
+	}
+}
+
+func (src Source) IsTrimmed() bool {
+	return src.trimmed
+}
+
+func (src Source) Sub(sub string) Source {
+	if sub == "" || sub == "." {
+		return src
+	}
+	src1 := src.Trim()
+	return Source{
+		Root: src1.Root,
+		Dir:  path.Join(src1.Dir, sub),
+	}.Trim()
 }
 
 func Dir(dirname string, subs ...string) Source {
 	return Source{
 		Root: os.DirFS(dirname),
-		Sub:  path.Join(subs...),
+		Dir:  path.Join(subs...),
 	}
 }

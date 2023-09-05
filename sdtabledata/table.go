@@ -104,7 +104,7 @@ func (row *row) ensureColumn(colId string) *column {
 
 func (row *row) absorb(opts *LoadOptions) error {
 	var rowData sdjson.Object
-	if err := readJsonFile(row.t.Root, path.Join(row.t.Sub, row.dataFn), &rowData); err != nil {
+	if err := readJsonFile(row.t.Root, path.Join(row.t.Dir, row.dataFn), &rowData); err != nil {
 		return sderr.WithStack(err)
 	}
 	if rowData == nil {
@@ -119,7 +119,7 @@ func (row *row) absorb(opts *LoadOptions) error {
 		}
 
 		storeFileForUrl := func(fn string) (string, error) {
-			target, err := store.StoreFileFS(row.t.Root, path.Join(row.t.Sub, fn), objectName)
+			target, err := store.StoreFileFS(row.t.Root, path.Join(row.t.Dir, fn), objectName)
 			if err != nil {
 				return "", sderr.WrapWith(err, "store column file error", fn)
 			}

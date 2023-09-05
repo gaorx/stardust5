@@ -50,7 +50,7 @@ var fileKindPatterns = []struct {
 }
 
 func loadItems(src Source) ([]*item, error) {
-	fsys, dir := src.Root, src.Sub
+	fsys, dir := src.Root, src.Dir
 	var filenames []string
 	err := fs.WalkDir(fsys, dir, func(fn string, d fs.DirEntry, err error) error {
 		if d == nil || d.IsDir() {
