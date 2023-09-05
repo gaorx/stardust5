@@ -4,12 +4,20 @@ import (
 	"encoding/json"
 	"github.com/gaorx/stardust5/sderr"
 	"github.com/gaorx/stardust5/sdjson"
-	"os"
+	"io/fs"
 	"strings"
 )
 
-func readJsonFile(fnAbs string, v any) error {
-	jsonRaw, err := os.ReadFile(fnAbs)
+func trimDir(dir string) string {
+	dir = strings.TrimPrefix(dir, "/")
+	if dir == "" {
+		dir = "."
+	}
+	return dir
+}
+
+func readJsonFile(fsys fs.FS, fn string, v any) error {
+	jsonRaw, err := fs.ReadFile(fsys, fn)
 	if err != nil {
 		return sderr.Wrap(err, "read json data error")
 	}

@@ -34,7 +34,7 @@ func (ac AccessControl) Apply(app *echo.Echo) error {
 		if token.UID == "" {
 			return sderr.WithStack(ErrUnauthorized)
 		}
-		
+
 		ok, err := ac.Check(ctx, ec, token, object, action)
 		if err != nil {
 			return sderr.WithStack(err)

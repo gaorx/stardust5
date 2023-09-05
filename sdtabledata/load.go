@@ -4,38 +4,38 @@ import (
 	"github.com/gaorx/stardust5/sderr"
 	"github.com/gaorx/stardust5/sdjson"
 	"github.com/gaorx/stardust5/sdobjectstore"
-	"path/filepath"
+	"github.com/samber/lo"
 )
 
 type LoadOptions struct {
-	Store            sdobjectstore.Interface
+	Store            sdobjectstore.Store
 	StoreObjectName  string
 	StoreHttpUrl     bool
 	IgnoreIllegalRow bool
 }
 
-func LoadAll(dir string, rowsPtr any, opts LoadOptions) error {
-	dirAbs, err := filepath.Abs(dir)
-	if err != nil {
-		return sderr.WrapWith(err, "get data absolute directory error", dir)
+func LoadAll(src Source, rowsPtr any, opts *LoadOptions) error {
+	if src.IsNil() {
+		return sderr.New("nil source")
 	}
-	t, err := newTable(dirAbs)
+	opts1 := lo.FromPtr(opts)
+	t, err := newTable(src)
 	if err != nil {
 		return sderr.WithStack(err)
 	}
-	err = t.absorb(&opts)
+	err = t.absorb(&opts1)
 	if err != nil {
 		return sderr.WithStack(err)
 	}
 	return convertByJson(t.data(), rowsPtr)
 }
 
-func LoadSome(dir string, rowsPtr any, rows []string, opts LoadOptions) error {
-	dirAbs, err := filepath.Abs(dir)
-	if err != nil {
-		return sderr.WrapWith(err, "get data absolute directory error", dir)
+func LoadSome(src Source, rowsPtr any, rows []string, opts *LoadOptions) error {
+	if src.IsNil() {
+		return sderr.New("nil source")
 	}
-	t, err := newTable(dirAbs)
+	opts1 := lo.FromPtr(opts)
+	t, err := newTable(src)
 	if err != nil {
 		return sderr.WithStack(err)
 	}
@@ -49,7 +49,7 @@ func LoadSome(dir string, rowsPtr any, rows []string, opts LoadOptions) error {
 				return sderr.NewWith("not found row in table data", row1)
 			}
 		}
-		err = row1.absorb(&opts)
+		err = row1.absorb(&opts1)
 		if err != nil {
 			return sderr.WithStack(err)
 		}
@@ -61,12 +61,12 @@ func LoadSome(dir string, rowsPtr any, rows []string, opts LoadOptions) error {
 	return convertByJson(rowsData, rowsPtr)
 }
 
-func LoadOne(dir string, row string, rowPtr any, opts LoadOptions) error {
-	dirAbs, err := filepath.Abs(dir)
-	if err != nil {
-		return sderr.WrapWith(err, "get data absolute directory error", dir)
+func LoadOne(src Source, row string, rowPtr any, opts *LoadOptions) error {
+	if src.IsNil() {
+		return sderr.New("nil source")
 	}
-	t, err := newTable(dirAbs)
+	opts1 := lo.FromPtr(opts)
+	t, err := newTable(src)
 	if err != nil {
 		return sderr.WithStack(err)
 	}
@@ -74,7 +74,7 @@ func LoadOne(dir string, row string, rowPtr any, opts LoadOptions) error {
 	if row1 == nil {
 		return sderr.NewWith("not found row in table data", row)
 	}
-	err = row1.absorb(&opts)
+	err = row1.absorb(&opts1)
 	if err != nil {
 		return sderr.WithStack(err)
 	}

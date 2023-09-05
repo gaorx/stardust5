@@ -3,14 +3,13 @@ package sdtabledata
 import (
 	"github.com/gaorx/stardust5/sderr"
 	"github.com/gaorx/stardust5/sdjson"
-	"github.com/gaorx/stardust5/sdobjectstore"
 	"github.com/samber/lo"
-	"path/filepath"
+	"path"
 )
 
 type table struct {
-	dirAbs string
-	rows   []*row
+	Source
+	rows []*row
 }
 
 type row struct {
@@ -27,12 +26,13 @@ type column struct {
 	subs map[string]string
 }
 
-func newTable(dirAbs string) (*table, error) {
-	items, err := loadItems(dirAbs)
+func newTable(src Source) (*table, error) {
+	src = src.Trim()
+	items, err := loadItems(src)
 	if err != nil {
 		return nil, err
 	}
-	t := &table{dirAbs: dirAbs}
+	t := &table{Source: src}
 	for _, item := range items {
 		switch item.kind {
 		case fileMeta:
@@ -71,14 +71,6 @@ func (t *table) listRowIds() []string {
 	})
 }
 
-func (t *table) absFn(fn string) string {
-	if filepath.IsAbs(fn) {
-		return fn
-	} else {
-		return filepath.Join(t.dirAbs, fn)
-	}
-}
-
 func (t *table) ensureRow(rowId string) *row {
 	for _, row := range t.rows {
 		if row.id == rowId {
@@ -112,7 +104,7 @@ func (row *row) ensureColumn(colId string) *column {
 
 func (row *row) absorb(opts *LoadOptions) error {
 	var rowData sdjson.Object
-	if err := readJsonFile(row.t.absFn(row.dataFn), &rowData); err != nil {
+	if err := readJsonFile(row.t.Root, path.Join(row.t.Sub, row.dataFn), &rowData); err != nil {
 		return sderr.WithStack(err)
 	}
 	if rowData == nil {
@@ -122,15 +114,14 @@ func (row *row) absorb(opts *LoadOptions) error {
 	// store column files
 	if len(row.columns) > 0 {
 		store, objectName, httpUrl := opts.Store, opts.StoreObjectName, opts.StoreHttpUrl
-		if store == nil {
+		if store.Interface == nil {
 			return sderr.New("nil object store")
 		}
 
 		storeFileForUrl := func(fn string) (string, error) {
-			fnAbs := row.t.absFn(fn)
-			target, err := store.Store(sdobjectstore.File(fnAbs, ""), objectName)
+			target, err := store.StoreFileFS(row.t.Root, path.Join(row.t.Sub, fn), objectName)
 			if err != nil {
-				return "", sderr.WrapWith(err, "store column file error", fnAbs)
+				return "", sderr.WrapWith(err, "store column file error", fn)
 			}
 			if httpUrl {
 				return target.Url(), nil

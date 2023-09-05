@@ -4,7 +4,6 @@ import (
 	"github.com/gaorx/stardust5/sderr"
 	"github.com/gaorx/stardust5/sdregexp"
 	"io/fs"
-	"os"
 	"path/filepath"
 	"regexp"
 )
@@ -50,28 +49,18 @@ var fileKindPatterns = []struct {
 	{regexp.MustCompile(`^(?P<row>[^ \f\n\r\t\v./]+)/(?P<column>\w+)\.(?P<sub>\w+)\.(?P<ext>\w+)$`), fileColumnSub},
 }
 
-func loadItems(dirAbs string) ([]*item, error) {
-	dirInfo, err := os.Stat(dirAbs)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return nil, sderr.NewWith("table directory is not exists", dirAbs)
-		} else {
-			return nil, sderr.WithStack(err)
-		}
-	}
-	if !dirInfo.IsDir() {
-		return nil, sderr.NewWith("table directory is a file", dirAbs)
-	}
+func loadItems(src Source) ([]*item, error) {
+	fsys, dir := src.Root, src.Sub
 	var filenames []string
-	err = filepath.Walk(dirAbs, func(path string, info fs.FileInfo, err error) error {
-		if info.IsDir() {
+	err := fs.WalkDir(fsys, dir, func(fn string, d fs.DirEntry, err error) error {
+		if d == nil || d.IsDir() {
 			return nil
 		}
-		filename, err := filepath.Rel(dirAbs, path)
+		fn1, err := filepath.Rel(dir, fn)
 		if err != nil {
-			return err
+			return sderr.WithStack(err)
 		}
-		filenames = append(filenames, filepath.ToSlash(filename))
+		filenames = append(filenames, fn1)
 		return nil
 	})
 	if err != nil {
@@ -103,5 +92,6 @@ func loadItems(dirAbs string) ([]*item, error) {
 			})
 		}
 	}
+	//sdprint.PrettyL(items)
 	return items, nil
 }

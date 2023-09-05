@@ -2,15 +2,13 @@ package sdtabledata
 
 import (
 	"github.com/gaorx/stardust5/sderr"
-	"path/filepath"
 )
 
-func ListRows(dir string) ([]string, error) {
-	dirAbs, err := filepath.Abs(dir)
-	if err != nil {
-		return nil, sderr.WrapWith(err, "get data absolute directory error", dir)
+func ListRows(src Source) ([]string, error) {
+	if src.IsNil() {
+		return nil, sderr.New("nil source")
 	}
-	t, err := newTable(dirAbs)
+	t, err := newTable(src)
 	if err != nil {
 		return nil, sderr.WithStack(err)
 	}
