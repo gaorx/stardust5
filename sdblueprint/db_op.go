@@ -56,6 +56,7 @@ func (bp *Blueprint) FillDummyData(tx *gorm.DB, opts *FillDummyDataOptions) erro
 			continue
 		}
 		records = lo.Map(records, func(record DummyRecord, _ int) DummyRecord { return record.ToDB(t) })
+		//sdprint.PrettyL(records[0])
 		for _, record := range records {
 			dbr := tx.Table(t.NameForDB()).Create(map[string]any(record))
 			if dbr.Error != nil {

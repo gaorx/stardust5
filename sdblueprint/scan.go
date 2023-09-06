@@ -102,11 +102,13 @@ func scanTableProto(bp *Blueprint, sv reflect.Value, st structType, mark markedF
 	newTable.ensurePrimaryKey().addColumns(pkColsByFlag)
 
 	// dummy data
-	dummyData, err := getDummyData(sv, st, newTable.columns)
-	if err != nil {
-		return sderr.WithStack(err)
+	if !bp.disableDummyData {
+		dummyData, err := getDummyData(bp.session, sv, st, newTable.columns)
+		if err != nil {
+			return sderr.WithStack(err)
+		}
+		newTable.dummyData = dummyData
 	}
-	newTable.dummyData = dummyData
 	return nil
 }
 

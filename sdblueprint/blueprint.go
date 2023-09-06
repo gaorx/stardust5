@@ -11,15 +11,18 @@ import (
 )
 
 type Blueprint struct {
-	protos    []any
-	finalized bool
-	tables    []*table
-	queries   []*query
-	modules   []*module
+	session          any
+	protos           []any
+	finalized        bool
+	tables           []*table
+	queries          []*query
+	modules          []*module
+	disableDummyData bool
 }
 
-func New() *Blueprint {
+func New(session any) *Blueprint {
 	return &Blueprint{
+		session:   session,
 		finalized: false,
 	}
 }
@@ -62,6 +65,7 @@ func (bp *Blueprint) Finalize() error {
 		return nil
 	}
 	bpCopy := &Blueprint{
+		session:   bp.session,
 		protos:    bp.protos,
 		finalized: false,
 	}

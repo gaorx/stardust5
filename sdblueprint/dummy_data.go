@@ -42,17 +42,24 @@ func (record DummyRecord) Lookup(colId string) (any, bool) {
 	return v, ok
 }
 
-func getDummyData(sv reflect.Value, st structType, cols []column) ([]DummyRecord, error) {
+func getDummyData(session any, sv reflect.Value, st structType, cols []column) ([]DummyRecord, error) {
 	var dummyData any
 
 	// get dummy data in struct field or method
 	if dummyDataVal := sv.FieldByName(dummyDataFieldName); dummyDataVal.IsValid() {
 		dummyData = dummyDataVal.Interface()
 	} else if dummyDataMethod := sv.MethodByName(dummyDataFieldName); dummyDataMethod.IsValid() {
-		if dummyDataMethod.Type().NumIn() != 0 || dummyDataMethod.Type().NumOut() != 1 {
+		if dummyDataMethod.Type().NumOut() != 1 {
 			return nil, sderr.New("illegal signature for DummyData method")
 		}
-		dummyData = dummyDataMethod.Call([]reflect.Value{})[0].Interface()
+		switch dummyDataMethod.Type().NumIn() {
+		case 0:
+			dummyData = dummyDataMethod.Call([]reflect.Value{})[0].Interface()
+		case 1:
+			dummyData = dummyDataMethod.Call([]reflect.Value{sdreflect.ValueOf(session)})[0].Interface()
+		default:
+			return nil, sderr.New("illegal signature for DummyData method")
+		}
 	}
 	if dummyData == nil {
 		return nil, nil
@@ -60,10 +67,17 @@ func getDummyData(sv reflect.Value, st structType, cols []column) ([]DummyRecord
 
 	// if dummy data is a callback, call it
 	if ddv := reflect.ValueOf(dummyData); ddv.Kind() == reflect.Func {
-		if ddv.Type().NumIn() != 0 || ddv.Type().NumOut() != 1 {
+		if ddv.Type().NumOut() != 1 {
 			return nil, sderr.New("illegal signature for DummyData callback")
 		}
-		dummyData = ddv.Call([]reflect.Value{})[0].Interface()
+		switch ddv.Type().NumIn() {
+		case 0:
+			dummyData = ddv.Call([]reflect.Value{})[0].Interface()
+		case 1:
+			dummyData = ddv.Call([]reflect.Value{sdreflect.ValueOf(session)})[0].Interface()
+		default:
+			return nil, sderr.New("illegal signature for DummyData callback")
+		}
 	}
 	if dummyData == nil {
 		return nil, nil
