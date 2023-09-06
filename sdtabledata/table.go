@@ -113,21 +113,17 @@ func (row *row) absorb(opts *LoadOptions) error {
 
 	// store column files
 	if len(row.columns) > 0 {
-		store, objectName, httpUrl := opts.Store, opts.StoreObjectName, opts.StoreHttpUrl
-		if store.Interface == nil {
-			return sderr.New("nil object store")
-		}
+		storeFile := opts.StoreFile
 
 		storeFileForUrl := func(fn string) (string, error) {
-			target, err := store.StoreFileFS(row.t.Root, path.Join(row.t.Dir, fn), objectName)
+			if storeFile == nil {
+				return "", nil
+			}
+			target, err := storeFile(row.t.Root, path.Join(row.t.Dir, fn))
 			if err != nil {
 				return "", sderr.WrapWith(err, "store column file error", fn)
 			}
-			if httpUrl {
-				return target.Url(), nil
-			} else {
-				return target.HttpsUrl(), nil
-			}
+			return target, nil
 		}
 
 		for _, col := range row.columns {

@@ -3,14 +3,11 @@ package sdtabledata
 import (
 	"github.com/gaorx/stardust5/sderr"
 	"github.com/gaorx/stardust5/sdjson"
-	"github.com/gaorx/stardust5/sdobjectstore"
 	"github.com/samber/lo"
 )
 
 type LoadOptions struct {
-	Store            sdobjectstore.Store
-	StoreObjectName  string
-	StoreHttpUrl     bool
+	StoreFile        StoreFile
 	IgnoreIllegalRow bool
 }
 

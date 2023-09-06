@@ -13,6 +13,10 @@ type Store struct {
 	Interface
 }
 
+func (s Store) IsNil() bool {
+	return s.Interface == nil
+}
+
 func (s Store) StoreFile(filename, objectName string) (*Target, error) {
 	return s.Store(File(filename, ""), objectName)
 }
