@@ -7,6 +7,7 @@ import (
 	"github.com/samber/lo"
 	"reflect"
 	"slices"
+	"strings"
 )
 
 type Table interface {
@@ -29,6 +30,7 @@ type Column interface {
 	Field
 	Jsonable
 	NameForTable
+	NameForJson() string
 	IsPrimaryKey() bool
 	IsAutoIncrement() bool
 	IsAllowNull() bool
@@ -347,6 +349,16 @@ func (c column) NameForDB() string {
 		return name
 	}
 	return sdstrings.ToSnakeL(c.id)
+}
+
+func (c column) NameForJson() string {
+	name := c.Get("json").AsStr()
+	if name != "" {
+		l := strings.SplitN(name, ",", 2)
+		return strings.TrimSpace(l[0])
+	} else {
+		return sdstrings.ToSnakeL(c.id)
+	}
 }
 
 func (c column) ToJsonObject() sdjson.Object {

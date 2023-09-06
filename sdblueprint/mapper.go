@@ -4,16 +4,14 @@ import (
 	"github.com/gaorx/stardust5/sderr"
 	"github.com/gaorx/stardust5/sdjson"
 	"github.com/gaorx/stardust5/sdreflect"
+	"github.com/samber/lo"
+	"strings"
 )
 
 // 生成一个mapper，用于将一个json内容映射到一个MarkAsTable的结构体上
 
 func MustMapper[PROTO any]() func(sdjson.Object) (PROTO, error) {
-	mapper, err := NewMapper[PROTO]()
-	if err != nil {
-		panic(sderr.WithStack(err))
-	}
-	return mapper
+	return lo.Must(NewMapper[PROTO]())
 }
 
 func NewMapper[PROTO any]() (func(sdjson.Object) (PROTO, error), error) {
@@ -25,11 +23,13 @@ func NewMapper[PROTO any]() (func(sdjson.Object) (PROTO, error), error) {
 	return func(row sdjson.Object) (PROTO, error) {
 		row1 := sdjson.Object{}
 		for _, c := range t.columns {
-			dbCol := c.Get("db").AsStr()
-			if dbCol == "" {
-				dbCol = c.id
+			dbCol := c.NameForDB()
+			jsonCol := c.id
+			if jsonTag := c.Get("json").AsStr(); jsonTag != "" {
+				l := strings.SplitN(jsonTag, ",", 2)
+				jsonCol = strings.TrimSpace(l[0])
 			}
-			row1[c.id] = row.Get(dbCol)
+			row1[jsonCol] = row.Get(dbCol).Interface()
 		}
 		return sdjson.ObjectToStruct[PROTO](row1)
 	}, nil
