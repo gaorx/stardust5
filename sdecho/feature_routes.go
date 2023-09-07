@@ -11,6 +11,7 @@ import (
 type Routes struct {
 	BasePath  string
 	Endpoints []any
+	DumpRoute func(method, path string)
 	*ResultOptions
 }
 
@@ -48,14 +49,22 @@ func (routes Routes) Apply(app *echo.Echo) error {
 		}
 	}
 
+	dumpRoute := func(method, path string) {
+		if routes.DumpRoute != nil {
+			routes.DumpRoute(method, path)
+		}
+	}
+
 	// add routes
 	for _, endpoint := range endpoints {
 		h := (*endpoint).handler
 		if slices.Contains(endpoint.Methods, "ANY") {
 			app.Any(pathOf(endpoint.Path), h, endpoint.Middlewares...)
+			dumpRoute("ANY", pathOf(endpoint.Path))
 		} else {
 			for _, method := range endpoint.Methods {
 				app.Add(method, pathOf(endpoint.Path), h, endpoint.Middlewares...)
+				dumpRoute(method, pathOf(endpoint.Path))
 			}
 		}
 	}

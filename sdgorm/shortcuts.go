@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/samber/lo"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 func Transaction[R any](db *gorm.DB, action func(tx *gorm.DB) (R, error), opts ...*sql.TxOptions) (R, error) {
@@ -158,4 +159,55 @@ func UpdateColumnsAndTake[T any](tx *gorm.DB, colVals map[string]any, q any, arg
 		return lo.Empty[T](), err
 	}
 	return Take[T](tx, append([]any{q}, args...)...)
+}
+
+type CreateInBatchesOptions struct {
+	Table     string // 可以指定表名，如果为空，则使用model中表名
+	Clear     bool   // 在插入数据前删除表中所有数据(危险操作)
+	Overwrite bool   // 如果为true，如果表中存在相同ID的行，则覆盖掉原来的行；否则不修改任何数据
+}
+
+func CreateInBatches[T any](tx *gorm.DB, rows []T, opts *CreateInBatchesOptions) (int64, error) {
+	if len(rows) <= 0 {
+		return 0, nil
+	}
+
+	opts1 := lo.FromPtr(opts)
+
+	txByTableNameOrModel := func(tx *gorm.DB) *gorm.DB {
+		if opts1.Table != "" {
+			return tx.Table(opts1.Table)
+		} else {
+			return tx.Model(rows[0])
+		}
+	}
+
+	if opts1.Clear {
+		var emptyRow T
+		dbr := txByTableNameOrModel(tx).
+			Session(&gorm.Session{AllowGlobalUpdate: true}).
+			Clauses().Delete(emptyRow)
+		if dbr.Error != nil {
+			return 0, dbr.Error
+		}
+	}
+
+	rowsAffected := int64(0)
+	for _, row := range rows {
+		var dbr *gorm.DB
+		if opts1.Overwrite {
+			dbr = txByTableNameOrModel(tx).
+				Clauses(clause.OnConflict{UpdateAll: true}).
+				Create(row)
+		} else {
+			dbr = txByTableNameOrModel(tx).
+				Clauses(clause.OnConflict{DoNothing: true}).
+				Create(row)
+		}
+		if dbr.Error != nil {
+			return rowsAffected, dbr.Error
+		}
+		rowsAffected += dbr.RowsAffected
+	}
+	return rowsAffected, nil
 }
