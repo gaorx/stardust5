@@ -3,9 +3,12 @@ package sdgorm
 import (
 	"database/sql"
 	"fmt"
+	"github.com/gaorx/stardust5/sderr"
+	"github.com/gaorx/stardust5/sdreflect"
 	"github.com/samber/lo"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
+	"reflect"
 )
 
 func Transaction[R any](db *gorm.DB, action func(tx *gorm.DB) (R, error), opts ...*sql.TxOptions) (R, error) {
@@ -167,23 +170,32 @@ type CreateInBatchesOptions struct {
 	Overwrite bool   // 如果为true，如果表中存在相同ID的行，则覆盖掉原来的行；否则不修改任何数据
 }
 
-func CreateInBatches[T any](tx *gorm.DB, rows []T, opts *CreateInBatchesOptions) (int64, error) {
-	if len(rows) <= 0 {
+func CreateInBatches(tx *gorm.DB, rows any, opts *CreateInBatchesOptions) (int64, error) {
+	if rows == nil {
+		return 0, nil
+	}
+	rowsVal := sdreflect.ValueOf(rows)
+	if rowsVal.Kind() != reflect.Slice && rowsVal.Kind() != reflect.Array {
+		return 0, sderr.New("illegal rows type")
+	}
+
+	nRows := rowsVal.Len()
+	if nRows <= 0 {
 		return 0, nil
 	}
 
+	rowTyp := rowsVal.Type().Elem()
 	opts1 := lo.FromPtr(opts)
-
 	txByTableNameOrModel := func(tx *gorm.DB) *gorm.DB {
 		if opts1.Table != "" {
 			return tx.Table(opts1.Table)
 		} else {
-			return tx.Model(rows[0])
+			return tx.Model(rowsVal.Index(0).Interface())
 		}
 	}
 
 	if opts1.Clear {
-		var emptyRow T
+		emptyRow := reflect.New(rowTyp).Elem()
 		dbr := txByTableNameOrModel(tx).
 			Session(&gorm.Session{AllowGlobalUpdate: true}).
 			Clauses().Delete(emptyRow)
@@ -193,7 +205,8 @@ func CreateInBatches[T any](tx *gorm.DB, rows []T, opts *CreateInBatchesOptions)
 	}
 
 	rowsAffected := int64(0)
-	for _, row := range rows {
+	for i := 0; i < nRows; i++ {
+		row := rowsVal.Index(i).Interface()
 		var dbr *gorm.DB
 		if opts1.Overwrite {
 			dbr = txByTableNameOrModel(tx).
