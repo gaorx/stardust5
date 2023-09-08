@@ -27,6 +27,16 @@ func (o Object) Set(k string, v any) Object {
 	return o
 }
 
+func (o Object) TryGet(keys ...string) Value {
+	for _, k := range keys {
+		v0, ok := o[k]
+		if ok {
+			return V(v0)
+		}
+	}
+	return V(nil)
+}
+
 func (o Object) ShadowCopy() Object {
 	if o == nil {
 		return nil

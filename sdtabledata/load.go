@@ -7,8 +7,6 @@ import (
 	"github.com/samber/lo"
 )
 
-type Modifier = func(sdjson.Object) sdjson.Object
-
 type LoadOptions struct {
 	StoreFile        StoreFile
 	IgnoreIllegalRow bool

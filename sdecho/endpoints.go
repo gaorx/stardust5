@@ -28,7 +28,7 @@ type Endpoint struct {
 	handler     echo.HandlerFunc
 }
 
-type Page struct {
+type WebPage struct {
 	Method      string
 	Path        string
 	Object      Object
@@ -51,33 +51,37 @@ type Record[ID RecordID] interface {
 	RecordID() ID
 }
 
-type Pagination struct {
-	Size  int
-	No    int
-	Total int
+type FindResult[T any] struct {
+	Data      []T
+	Request   any
+	NumRows   int
+	PageSize  int
+	PageNum   int
+	PageTotal int
 }
 
-type FindResult[T Record[ID], ID RecordID] struct {
-	Data       []T
-	Filter     any
-	Pagination Pagination
+type FindAPI[T Record[ID], ID RecordID, REQ any] struct {
+	Path        string
+	Object      Object
+	Bare        bool
+	Func        func(echo.Context, REQ) (*FindResult[T], error)
+	Middlewares []echo.MiddlewareFunc
 }
 
-type CrudAPI[T Record[ID], ID RecordID, F any] struct {
+type CrudAPI[T Record[ID], ID RecordID, REQ any] struct {
 	Path        string
 	Create      func(echo.Context, T) (T, error)
 	Update      func(echo.Context, T, []string) (T, error)
 	Delete      func(echo.Context, ID) error
 	Get         func(echo.Context, ID) (T, error)
-	Find        func(echo.Context, F, Pagination) (*FindResult[T, ID], error)
+	Find        func(echo.Context, REQ) (*FindResult[T], error)
 	Object      Object
 	ObjectR     Object
 	ObjectW     Object
 	Middlewares []echo.MiddlewareFunc
-	PageSize    int
 }
 
-func (p Page) ToEndpoint() Endpoint {
+func (p WebPage) ToEndpoint() Endpoint {
 	if p.Method == "" {
 		p.Method = http.MethodGet
 	}
@@ -102,7 +106,31 @@ func (api API) ToEndpoint() Endpoint {
 	}
 }
 
-func (api CrudAPI[T, ID, F]) ToEndpoints() []Endpoint {
+func (api FindAPI[T, ID, REQ]) ToEndpoint() Endpoint {
+	return API{
+		Path:   api.Path,
+		Object: api.Object,
+		Func: func(ec Context) *Result {
+			var req REQ
+			err := ec.Bind(&req)
+			if err != nil {
+				return ResultErr(ErrBadRequest, "parse request error")
+			}
+			fr, err := api.Func(ec, req)
+			return ResultOf(fr.Data, err).WithFields(map[string]any{
+				"request":   req,
+				"page":      fr.PageNum,
+				"pageSize":  fr.PageSize,
+				"pageTotal": fr.PageTotal,
+				"numRows":   fr.NumRows,
+			})
+		},
+		Bare:        api.Bare,
+		Middlewares: api.Middlewares,
+	}.ToEndpoint()
+}
+
+func (api CrudAPI[T, ID, FA]) ToEndpoints() []Endpoint {
 	selectObject := func(first, second Object) Object {
 		if !first.IsEmpty() {
 			return first
@@ -169,26 +197,11 @@ func (api CrudAPI[T, ID, F]) ToEndpoints() []Endpoint {
 
 	// find
 	if api.Find != nil {
-		pageSize := api.PageSize
-		if pageSize <= 0 {
-			pageSize = 20
-		}
-		endpoints = append(endpoints, API{
-			Path:   sdurl.JoinPath(api.Path, "find"),
-			Object: selectObject(api.ObjectR, api.Object),
-			Func: func(ec Context, filter F) *Result {
-				pg := Pagination{
-					Size: ec.ArgInt("pageSize", pageSize),
-					No:   ec.ArgInt("page", 1),
-				}
-				fr, err := api.Find(ec, filter, pg)
-				return ResultOf(fr.Data, err).WithFields(map[string]any{
-					"page":      pg.No,
-					"pageSize":  pg.Size,
-					"pageTotal": pg.Total,
-					"filter":    filter,
-				})
-			},
+		endpoints = append(endpoints, FindAPI[T, ID, FA]{
+			Path:        sdurl.JoinPath(api.Path, "find"),
+			Object:      selectObject(api.ObjectR, api.Object),
+			Bare:        false,
+			Func:        api.Find,
 			Middlewares: api.Middlewares,
 		}.ToEndpoint())
 	}

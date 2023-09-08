@@ -23,6 +23,13 @@ func Page1(num, size int) Page {
 	return Page{Num: num, Size: size, base0: false}
 }
 
+func (p Page) WithDefaultSize(defaultSize int) Page {
+	if p.Size <= 0 {
+		p.Size = defaultSize
+	}
+	return p
+}
+
 func (p Page) Scope() func(*gorm.DB) *gorm.DB {
 	limit, offset := p.LimitOffset()
 	return func(tx *gorm.DB) *gorm.DB {

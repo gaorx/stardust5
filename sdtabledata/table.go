@@ -148,7 +148,7 @@ func (row *row) absorb(opts *LoadOptions) error {
 	}
 
 	if opts.Modifier != nil {
-		rowData = opts.Modifier(rowData)
+		rowData = opts.Modifier.ModifyRow(rowData)
 	}
 	row.data = rowData
 	return nil
