@@ -84,6 +84,16 @@ type PagingResult[T any] struct {
 	PageTotal int
 }
 
+func NewPagingResultTo[T, R any](pr *PagingResult[T], rows []R) *PagingResult[R] {
+	return &PagingResult[R]{
+		Rows:      rows,
+		NumRows:   pr.NumRows,
+		PageSize:  pr.PageSize,
+		PageNum:   pr.PageNum,
+		PageTotal: pr.PageTotal,
+	}
+}
+
 func FindPaging[T any](builder func() *gorm.DB, p Page) (*PagingResult[T], error) {
 	var rows []T
 	dbr := builder().Scopes(p.Scope()).Find(&rows)

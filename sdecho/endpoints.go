@@ -60,6 +60,14 @@ type FindResult[T any] struct {
 	PageTotal int
 }
 
+type ListAPI[T Record[ID], ID RecordID, REQ any] struct {
+	Path        string
+	Object      Object
+	Bare        bool
+	Func        func(echo.Context, REQ) ([]T, error)
+	Middlewares []echo.MiddlewareFunc
+}
+
 type FindAPI[T Record[ID], ID RecordID, REQ any] struct {
 	Path        string
 	Object      Object
@@ -68,13 +76,14 @@ type FindAPI[T Record[ID], ID RecordID, REQ any] struct {
 	Middlewares []echo.MiddlewareFunc
 }
 
-type CrudAPI[T Record[ID], ID RecordID, REQ any] struct {
+type CrudAPI[T Record[ID], ID RecordID, FREQ any] struct {
 	Path        string
 	Create      func(echo.Context, T) (T, error)
 	Update      func(echo.Context, T, []string) (T, error)
 	Delete      func(echo.Context, ID) error
 	Get         func(echo.Context, ID) (T, error)
-	Find        func(echo.Context, REQ) (*FindResult[T], error)
+	List        func(echo.Context, FREQ) ([]T, error)
+	Find        func(echo.Context, FREQ) (*FindResult[T], error)
 	Object      Object
 	ObjectR     Object
 	ObjectW     Object
@@ -106,6 +115,24 @@ func (api API) ToEndpoint() Endpoint {
 	}
 }
 
+func (api ListAPI[T, ID, REQ]) ToEndpoint() Endpoint {
+	return API{
+		Path:   api.Path,
+		Object: api.Object,
+		Func: func(ec Context) *Result {
+			var req REQ
+			err := ec.Bind(&req)
+			if err != nil {
+				return ResultErr(ErrBadRequest, "parse request error")
+			}
+			rows, err := api.Func(ec, req)
+			return ResultOf(rows, err)
+		},
+		Bare:        api.Bare,
+		Middlewares: api.Middlewares,
+	}.ToEndpoint()
+}
+
 func (api FindAPI[T, ID, REQ]) ToEndpoint() Endpoint {
 	return API{
 		Path:   api.Path,
@@ -130,7 +157,7 @@ func (api FindAPI[T, ID, REQ]) ToEndpoint() Endpoint {
 	}.ToEndpoint()
 }
 
-func (api CrudAPI[T, ID, FA]) ToEndpoints() []Endpoint {
+func (api CrudAPI[T, ID, FREQ]) ToEndpoints() []Endpoint {
 	selectObject := func(first, second Object) Object {
 		if !first.IsEmpty() {
 			return first
@@ -196,8 +223,19 @@ func (api CrudAPI[T, ID, FA]) ToEndpoints() []Endpoint {
 	}
 
 	// find
+	if api.List != nil {
+		endpoints = append(endpoints, ListAPI[T, ID, FREQ]{
+			Path:        sdurl.JoinPath(api.Path, "list"),
+			Object:      selectObject(api.ObjectR, api.Object),
+			Bare:        false,
+			Func:        api.List,
+			Middlewares: api.Middlewares,
+		}.ToEndpoint())
+	}
+
+	// find for paging
 	if api.Find != nil {
-		endpoints = append(endpoints, FindAPI[T, ID, FA]{
+		endpoints = append(endpoints, FindAPI[T, ID, FREQ]{
 			Path:        sdurl.JoinPath(api.Path, "find"),
 			Object:      selectObject(api.ObjectR, api.Object),
 			Bare:        false,

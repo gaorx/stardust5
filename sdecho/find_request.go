@@ -24,6 +24,10 @@ type AntdJsonFindReq struct {
 	Flags  string        `json:"string,omitempty"`
 }
 
+func (req AntdJsonFindReq) Keyword() string {
+	return req.Params.TryGet("keyword", "keyWord").AsStringDef("")
+}
+
 func (req AntdJsonFindReq) Paging1(defaultSize int) (int, int) {
 	page := req.Params.TryGet("current", "page", "pageNum", "page_num").AsIntDef(0)
 	if page <= 0 {
