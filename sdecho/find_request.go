@@ -21,7 +21,7 @@ type AntdJsonFindReq struct {
 	Params sdjson.Object `json:"params,omitempty"`
 	Sort   sdjson.Object `json:"sort,omitempty"`
 	Filter sdjson.Object `json:"filter,omitempty"`
-	Flags  string        `json:"string,omitempty"`
+	Flags  string        `json:"flags,omitempty"`
 }
 
 func (req AntdJsonFindReq) Keyword() string {

@@ -17,6 +17,7 @@ type Blueprint struct {
 	tables           []*table
 	queries          []*query
 	modules          []*module
+	disableMethod    bool
 	disableDummyData bool
 }
 

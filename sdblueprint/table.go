@@ -24,6 +24,8 @@ type Table interface {
 	Member(id string) Field
 	Indexes() []Index
 	PrimaryKey() Index
+	Methods() []Method
+	Method(id string) Method
 }
 
 type Column interface {
@@ -85,6 +87,7 @@ type table struct {
 	columns   []column
 	members   []*field
 	indexes   []*index
+	methods   []*method
 }
 
 type column struct {
@@ -174,6 +177,19 @@ func (t *table) PrimaryKey() Index {
 	return nil
 }
 
+func (t *table) Methods() []Method {
+	return lo.Map(t.methods, func(m *method, _ int) Method { return m })
+}
+
+func (t *table) Method(id string) Method {
+	for _, m := range t.methods {
+		if m.id == id {
+			return m
+		}
+	}
+	return nil
+}
+
 func (t *table) addFieldAsColumn(f *field) column {
 	c := column{f}
 	t.columns = append(t.columns, c)
@@ -231,6 +247,11 @@ func (t *table) ensurePrimaryKey() *index {
 	newIndexes = append(newIndexes, t.indexes...)
 	t.indexes = newIndexes
 	return pk
+}
+
+func (t *table) addMethod(m *method) *method {
+	t.methods = append(t.methods, m)
+	return m
 }
 
 func (t *table) setComment(comment string) *table {

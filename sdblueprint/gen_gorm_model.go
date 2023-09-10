@@ -5,7 +5,12 @@ import (
 	"github.com/gaorx/stardust5/sdcodegen"
 	"github.com/gaorx/stardust5/sdcodegen/sdgengo"
 	"github.com/gaorx/stardust5/sderr"
+	"github.com/gaorx/stardust5/sdslog"
+	"github.com/gaorx/stardust5/sdstrings"
+	"github.com/gaorx/stardust5/sdtemplate"
 	"github.com/samber/lo"
+	"reflect"
+	"slices"
 	"strconv"
 	"strings"
 )
@@ -137,7 +142,7 @@ func onGormHeader(w sdcodegen.Writer, g *GormModel, bp *Blueprint) {
 	}
 }
 
-func onGormTable(w sdcodegen.Writer, g *GormModel, _ *Blueprint, t Table) {
+func onGormTable(w sdcodegen.Writer, g *GormModel, bp *Blueprint, t Table) {
 	gormTag := func(c Column) string {
 		v := "column:" + c.NameForDB()
 		if lo.Contains(t.PrimaryKey().Columns(), c.Id()) {
@@ -151,23 +156,37 @@ func onGormTable(w sdcodegen.Writer, g *GormModel, _ *Blueprint, t Table) {
 	}
 
 	col2sf := func(c Column) sdgengo.Field {
-		tags := []sdgengo.FieldTag{
-			{K: "gorm", V: gormTag(c)},
-		}
-		tags = appendStructFieldTagsByAttrs(tags, c, "json", "xml", "validate")
+		goTyp := getMemberGoType(
+			c.Type(),
+			c.Get("go_type").AsStr(),
+			c.Get("go_import").AsStr(),
+		)
+		sdgengo.AddImportPackages(w, goTyp.pkgPaths)
+		var tags1 []sdgengo.FieldTag
+		tags1 = append(tags1, sdgengo.FieldTag{K: "gorm", V: gormTag(c)})
+		tags1 = appendStructFieldTagsByAttrs(tags1, c, "json", "xml", "validate")
 		return sdgengo.Field{
 			Name:    c.Id(),
 			Type:    c.Type().String(),
-			Tags:    tags,
+			Tags:    tags1,
 			Comment: c.Comment(),
 		}
 	}
 
 	member2sf := func(member Field) sdgengo.Field {
+		goTyp := getMemberGoType(
+			member.Type(),
+			member.Get("go_type").AsStr(),
+			member.Get("go_import").AsStr(),
+		)
+		sdgengo.AddImportPackages(w, goTyp.pkgPaths)
+		var tags1 []sdgengo.FieldTag
+		tags1 = append(tags1, sdgengo.FieldTag{K: "gorm", V: "-:all"})
+		tags1 = appendStructFieldTagsByAttrs(tags1, member, "json", "xml", "validate")
 		return sdgengo.Field{
 			Name:    member.Id(),
-			Type:    member.Type().String(),
-			Tags:    appendStructFieldTagsByAttrs(nil, member, "json", "xml", "validate"),
+			Type:    goTyp.typ,
+			Tags:    tags1,
 			Comment: member.Comment(),
 		}
 	}
@@ -195,6 +214,20 @@ func onGormTable(w sdcodegen.Writer, g *GormModel, _ *Blueprint, t Table) {
 			w.I(1).FL("return \"%s\"", t.NameForDB())
 		},
 	)
+	for _, method := range t.Methods() {
+		code := string(method.Code())
+		data := map[string]any{
+			"T": t.NameForGo(),
+		}
+		rendered, err := sdtemplate.Text.Exec(code, data)
+		if err != nil {
+			sdslog.WithError(err).With("method", t.Id()+"."+method.Id()).Info("render method error")
+			w.FL("// render method error %s.%s", t.Id(), method.Id())
+		} else {
+			w.FL(rendered)
+		}
+	}
+
 	w.NL()
 }
 
@@ -311,5 +344,58 @@ func onGormQuery(w sdcodegen.Writer, g *GormModel, _ *Blueprint, q Query) {
 		}).NL()
 	default:
 		panic(sderr.NewWith("illegal kind in query for generate code", sderr.Attrs{"kind": k, "q": q.Id()}))
+	}
+}
+
+type goModelFieldType struct {
+	pkgPaths []string
+	typ      string
+}
+
+func getMemberGoType(typ reflect.Type, goTyp, goImport string) goModelFieldType {
+	trimPkgPaths := func(l []string) []string {
+		l1 := lo.Filter(l, func(x string, _ int) bool {
+			return x != ""
+		})
+		slices.Sort(l1)
+		return l1
+	}
+
+	if goTyp != "" {
+		return goModelFieldType{
+			pkgPaths: trimPkgPaths(sdstrings.SplitNonempty(goImport, ";", true)),
+			typ:      strings.TrimSpace(goTyp),
+		}
+	} else {
+		var getPkgPaths func(reflect.Type) []string
+		getPkgPaths = func(typ0 reflect.Type) []string {
+			if typ0.PkgPath() != "" {
+				return []string{typ0.PkgPath()}
+			} else {
+				switch typ0.Kind() {
+				case reflect.Pointer, reflect.Slice, reflect.Array, reflect.Chan:
+					return getPkgPaths(typ0.Elem())
+				case reflect.Map:
+					keyImportPkgs := getPkgPaths(typ0.Key())
+					valImportPkgs := getPkgPaths(typ0.Elem())
+					return append(keyImportPkgs, valImportPkgs...)
+				case reflect.Func:
+					var importPkgs []string
+					for i := 0; i < typ0.NumIn(); i++ {
+						importPkgs = append(importPkgs, getPkgPaths(typ0.In(i))...)
+					}
+					for i := 0; i < typ0.NumOut(); i++ {
+						importPkgs = append(importPkgs, getPkgPaths(typ0.Out(i))...)
+					}
+					return importPkgs
+				default:
+					return []string{}
+				}
+			}
+		}
+		return goModelFieldType{
+			pkgPaths: trimPkgPaths(getPkgPaths(typ)),
+			typ:      typ.String(),
+		}
 	}
 }

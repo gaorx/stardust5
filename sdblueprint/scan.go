@@ -29,6 +29,17 @@ func scanProto(bp *Blueprint, sv reflect.Value, st structType, name string) erro
 	}
 }
 
+func scanTableId(st structType) (string, bool) {
+	marks := st.findStructMarkIn(structMarks)
+	if len(marks) == 1 {
+		mark := marks[0]
+		if mark.mark == markAsTable {
+			return mark.getId(&st), true
+		}
+	}
+	return "", false
+}
+
 func scanTableProto(bp *Blueprint, sv reflect.Value, st structType, mark markedField) error {
 	id := mark.getId(&st)
 	newTable := bp.addTable(id, func() attributes {
@@ -74,7 +85,7 @@ func scanTableProto(bp *Blueprint, sv reflect.Value, st structType, mark markedF
 				attributes: func() attributes {
 					attrs := attributes{}
 					structTag(sf.Tag).toAttrs(attrs,
-						"json", "xml", "validate", "go", "default", "db_type", "dbtype",
+						"json", "xml", "validate", "go", "go_type", "go_import", "default", "db_type", "dbtype",
 						"pk", "primary_key", "unique", "index",
 					)
 					structTag(sf.Tag).toAttrsForFlags(attrs, "db")
@@ -90,6 +101,26 @@ func scanTableProto(bp *Blueprint, sv reflect.Value, st structType, mark markedF
 				newTable.addSimpleIndex([]string{f.id})
 			} else if f.First([]string{"db.unique", "unique"}).AsBool(false) {
 				newTable.addUniqueIndex([]string{f.id})
+			}
+		}
+	}
+	if !bp.disableMethod {
+		n = st.NumMethod()
+		for i := 0; i < n; i++ {
+			mt := st.Method(i)
+			if mt.IsExported() &&
+				mt.Type.NumIn() == 1 &&
+				mt.Type.NumOut() == 1 &&
+				mt.Type.Out(0) == reflect.TypeOf(MethodCode("")) {
+				methodName := mt.Name
+				methodVal := sv.MethodByName(mt.Name)
+				if methodVal.IsValid() {
+					code := methodVal.Call([]reflect.Value{})[0].Interface().(MethodCode)
+					newTable.addMethod(&method{
+						id:   methodName,
+						code: code,
+					})
+				}
 			}
 		}
 	}

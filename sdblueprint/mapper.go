@@ -38,6 +38,7 @@ func NewMapper[PROTO any]() (func(sdjson.Object) (PROTO, error), error) {
 func scanProtoToTable(proto any) (*table, error) {
 	bp := &Blueprint{
 		finalized:        false,
+		disableMethod:    true,
 		disableDummyData: true,
 	}
 	st, ok := structTypeOf(proto)
