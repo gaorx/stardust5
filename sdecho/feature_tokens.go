@@ -57,8 +57,12 @@ func (tt Tokens) Apply(app *echo.Echo) error {
 	return nil
 }
 
-func TokenGet(ctx context.Context, ec echo.Context) (Token, error) {
-	return TokenDecode(ctx, ec)
+func TokenGet(ctx context.Context, ec echo.Context) Token {
+	token, err := TokenDecode(ctx, ec)
+	if err != nil {
+		return Token{}
+	}
+	return token
 }
 
 func TokenDecode(_ context.Context, ec echo.Context) (Token, error) {
