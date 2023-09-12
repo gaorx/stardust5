@@ -60,7 +60,7 @@ type FindResult[T any] struct {
 	PageTotal int
 }
 
-type ListAPI[T Record[ID], ID RecordID, REQ any] struct {
+type ListAPI[T Record[ID], ID RecordID, REQ BaseRequest] struct {
 	Path        string
 	Object      Object
 	Bare        bool
@@ -68,7 +68,7 @@ type ListAPI[T Record[ID], ID RecordID, REQ any] struct {
 	Middlewares []echo.MiddlewareFunc
 }
 
-type FindAPI[T Record[ID], ID RecordID, REQ any] struct {
+type FindAPI[T Record[ID], ID RecordID, REQ BaseRequest] struct {
 	Path        string
 	Object      Object
 	Bare        bool
@@ -76,14 +76,14 @@ type FindAPI[T Record[ID], ID RecordID, REQ any] struct {
 	Middlewares []echo.MiddlewareFunc
 }
 
-type CrudAPI[T Record[ID], ID RecordID, FREQ any] struct {
+type CrudAPI[T Record[ID], ID RecordID, REQ BaseRequest] struct {
 	Path        string
-	Create      func(echo.Context, T) (T, error)
-	Update      func(echo.Context, T, []string) (T, error)
-	Delete      func(echo.Context, ID) error
-	Get         func(echo.Context, ID) (T, error)
-	List        func(echo.Context, FREQ) ([]T, error)
-	Find        func(echo.Context, FREQ) (*FindResult[T], error)
+	Create      func(echo.Context, T, REQ) (T, error)
+	Update      func(echo.Context, T, REQ) (T, error)
+	Delete      func(echo.Context, ID, REQ) error
+	Get         func(echo.Context, ID, REQ) (T, error)
+	List        func(echo.Context, REQ) ([]T, error)
+	Find        func(echo.Context, REQ) (*FindResult[T], error)
 	Object      Object
 	ObjectR     Object
 	ObjectW     Object
@@ -120,10 +120,14 @@ func (api ListAPI[T, ID, REQ]) ToEndpoint() Endpoint {
 		Path:   api.Path,
 		Object: api.Object,
 		Func: func(ec Context) *Result {
-			var req REQ
+			var req = newAsPtr[REQ]()
 			err := ec.Bind(&req)
 			if err != nil {
 				return ResultErr(ErrBadRequest, "parse request error")
+			}
+			flagsText := ec.QueryParam("_flags")
+			if flagsText != "" {
+				req.SetFlags(sdstrings.SplitNonempty(flagsText, ",", true))
 			}
 			rows, err := api.Func(ec, req)
 			return ResultOf(rows, err)
@@ -138,10 +142,14 @@ func (api FindAPI[T, ID, REQ]) ToEndpoint() Endpoint {
 		Path:   api.Path,
 		Object: api.Object,
 		Func: func(ec Context) *Result {
-			var req REQ
+			var req = newAsPtr[REQ]()
 			err := ec.Bind(&req)
 			if err != nil {
 				return ResultErr(ErrBadRequest, "parse request error")
+			}
+			flagsText := ec.QueryParam("_flags")
+			if flagsText != "" {
+				req.SetFlags(sdstrings.SplitNonempty(flagsText, ",", true))
 			}
 			fr, err := api.Func(ec, req)
 			return ResultOf(fr.Data, err).WithFields(map[string]any{
@@ -157,7 +165,7 @@ func (api FindAPI[T, ID, REQ]) ToEndpoint() Endpoint {
 	}.ToEndpoint()
 }
 
-func (api CrudAPI[T, ID, FREQ]) ToEndpoints() []Endpoint {
+func (api CrudAPI[T, ID, REQ]) ToEndpoints() []Endpoint {
 	selectObject := func(first, second Object) Object {
 		if !first.IsEmpty() {
 			return first
@@ -172,8 +180,10 @@ func (api CrudAPI[T, ID, FREQ]) ToEndpoints() []Endpoint {
 		endpoints = append(endpoints, API{
 			Path:   sdurl.JoinPath(api.Path, "create"),
 			Object: selectObject(api.ObjectW, api.Object),
-			Func: func(ec echo.Context, req T) *Result {
-				created, err := api.Create(ec, req)
+			Func: func(ec echo.Context, entityReq T) *Result {
+				var req = newAsPtr[REQ]()
+				req.SetFlags(sdstrings.SplitNonempty(ec.QueryParam("_flags"), ",", true))
+				created, err := api.Create(ec, entityReq, req)
 				return ResultOf(created, err)
 			},
 			Middlewares: api.Middlewares,
@@ -185,9 +195,11 @@ func (api CrudAPI[T, ID, FREQ]) ToEndpoints() []Endpoint {
 		endpoints = append(endpoints, API{
 			Path:   sdurl.JoinPath(api.Path, "create"),
 			Object: selectObject(api.ObjectW, api.Object),
-			Func: func(ec echo.Context, req T) *Result {
-				fields := sdstrings.SplitNonempty(ec.QueryParam("fields"), ",", true)
-				updated, err := api.Update(ec, req, fields)
+			Func: func(ec echo.Context, entityReq T) *Result {
+				var req = newAsPtr[REQ]()
+				req.SetFlags(sdstrings.SplitNonempty(ec.QueryParam("_flags"), ",", true))
+				req.SetFields(sdstrings.SplitNonempty(ec.QueryParam("_fields"), ",", true))
+				updated, err := api.Update(ec, entityReq, req)
 				return ResultOf(updated, err)
 			},
 			Middlewares: api.Middlewares,
@@ -200,7 +212,8 @@ func (api CrudAPI[T, ID, FREQ]) ToEndpoints() []Endpoint {
 			Path:   sdurl.JoinPath(api.Path, "delete"),
 			Object: selectObject(api.ObjectW, api.Object),
 			Func: func(ec echo.Context, id ID) *Result {
-				err := api.Delete(ec, id)
+				var req = newAsPtr[REQ]()
+				err := api.Delete(ec, id, req)
 				return ResultOf("deleted", err)
 			},
 			Middlewares: api.Middlewares,
@@ -212,10 +225,12 @@ func (api CrudAPI[T, ID, FREQ]) ToEndpoints() []Endpoint {
 		endpoints = append(endpoints, API{
 			Path:   sdurl.JoinPath(api.Path, "get"),
 			Object: selectObject(api.ObjectR, api.Object),
-			Func: func(ec echo.Context, req struct {
+			Func: func(ec echo.Context, idReq struct {
 				Id ID `json:"id"`
 			}) *Result {
-				record, err := api.Get(ec, req.Id)
+				var req = newAsPtr[REQ]()
+				req.SetFlags(sdstrings.SplitNonempty(ec.QueryParam("_flags"), ",", true))
+				record, err := api.Get(ec, idReq.Id, req)
 				return ResultOf(record, err)
 			},
 			Middlewares: api.Middlewares,
@@ -224,7 +239,7 @@ func (api CrudAPI[T, ID, FREQ]) ToEndpoints() []Endpoint {
 
 	// find
 	if api.List != nil {
-		endpoints = append(endpoints, ListAPI[T, ID, FREQ]{
+		endpoints = append(endpoints, ListAPI[T, ID, REQ]{
 			Path:        sdurl.JoinPath(api.Path, "list"),
 			Object:      selectObject(api.ObjectR, api.Object),
 			Bare:        false,
@@ -235,7 +250,7 @@ func (api CrudAPI[T, ID, FREQ]) ToEndpoints() []Endpoint {
 
 	// find for paging
 	if api.Find != nil {
-		endpoints = append(endpoints, FindAPI[T, ID, FREQ]{
+		endpoints = append(endpoints, FindAPI[T, ID, REQ]{
 			Path:        sdurl.JoinPath(api.Path, "find"),
 			Object:      selectObject(api.ObjectR, api.Object),
 			Bare:        false,

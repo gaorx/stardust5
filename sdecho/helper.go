@@ -2,8 +2,11 @@ package sdecho
 
 import (
 	"fmt"
+	"github.com/gaorx/stardust5/sdreflect"
 	"github.com/gaorx/stardust5/sdstrings"
 	"github.com/labstack/echo/v4"
+	"github.com/samber/lo"
+	"reflect"
 )
 
 func contextExpandMapper(ec echo.Context) sdstrings.ExpandMapper {
@@ -19,5 +22,14 @@ func contextExpandMapper(ec echo.Context) sdstrings.ExpandMapper {
 			}
 		}
 		return v
+	}
+}
+
+func newAsPtr[T any]() T {
+	typ := sdreflect.T[T]()
+	if typ.Kind() == reflect.Pointer {
+		return reflect.New(typ.Elem()).Interface().(T)
+	} else {
+		return lo.Empty[T]()
 	}
 }
