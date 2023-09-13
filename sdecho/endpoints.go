@@ -193,7 +193,7 @@ func (api CrudAPI[T, ID, REQ]) ToEndpoints() []Endpoint {
 	// update
 	if api.Update != nil {
 		endpoints = append(endpoints, API{
-			Path:   sdurl.JoinPath(api.Path, "create"),
+			Path:   sdurl.JoinPath(api.Path, "update"),
 			Object: selectObject(api.ObjectW, api.Object),
 			Func: func(ec echo.Context, entityReq T) *Result {
 				var req = newAsPtr[REQ]()
@@ -211,9 +211,11 @@ func (api CrudAPI[T, ID, REQ]) ToEndpoints() []Endpoint {
 		endpoints = append(endpoints, API{
 			Path:   sdurl.JoinPath(api.Path, "delete"),
 			Object: selectObject(api.ObjectW, api.Object),
-			Func: func(ec echo.Context, id ID) *Result {
+			Func: func(ec echo.Context, idReq struct {
+				Id ID `json:"id"`
+			}) *Result {
 				var req = newAsPtr[REQ]()
-				err := api.Delete(ec, id, req)
+				err := api.Delete(ec, idReq.Id, req)
 				return ResultOf("deleted", err)
 			},
 			Middlewares: api.Middlewares,

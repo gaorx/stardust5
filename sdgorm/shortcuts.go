@@ -41,6 +41,15 @@ func Raw[T any](tx *gorm.DB, q string, values ...any) (T, error) {
 	return r, nil
 }
 
+func Delete[T any](tx *gorm.DB, conds ...any) (int64, error) {
+	var empty T
+	dbr := tx.Delete(empty, conds...)
+	if dbr.Error != nil {
+		return 0, dbr.Error
+	}
+	return dbr.RowsAffected, nil
+}
+
 func First[T any](tx *gorm.DB, conds ...any) (T, error) {
 	var r T
 	dbr := tx.First(&r, conds...)
