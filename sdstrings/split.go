@@ -68,3 +68,24 @@ func Split4s(s, sep string) (string, string, string, string) {
 		return l[0], l[1], l[2], l[3]
 	}
 }
+
+func Split5s(s, sep string) (string, string, string, string, string) {
+	if s == "" {
+		return "", "", "", "", ""
+	}
+	l := strings.SplitN(s, sep, 5)
+	switch len(l) {
+	case 0:
+		return "", "", "", "", ""
+	case 1:
+		return l[0], "", "", "", ""
+	case 2:
+		return l[0], l[1], "", "", ""
+	case 3:
+		return l[0], l[1], l[2], "", ""
+	case 4:
+		return l[0], l[1], l[2], l[3], ""
+	default:
+		return l[0], l[1], l[2], l[3], l[4]
+	}
+}
