@@ -8,7 +8,9 @@ import (
 	"github.com/gaorx/stardust5/sdparse"
 	"github.com/labstack/echo/v4"
 	"github.com/samber/lo"
+	"golang.org/x/exp/maps"
 	"io"
+	"mime/multipart"
 	"net/http"
 	"strconv"
 	"time"
@@ -251,4 +253,53 @@ func (c Context) CookieJsonObject(name string, def sdjson.Object) sdjson.Object 
 		return def
 	}
 	return v.AsObjectDef(def)
+}
+
+// handle upload file
+
+type FileHeader struct {
+	File string
+	*multipart.FileHeader
+}
+
+func (fh FileHeader) ReadData(sizeLimit int64) ([]byte, error) {
+	if fh.Size > sizeLimit {
+		return nil, sderr.New("too large")
+	}
+	f, err := fh.Open()
+	if err != nil {
+		return nil, sderr.WrapWith(err, "read file error", fh.File)
+	}
+	defer func() {
+		_ = f.Close()
+	}()
+	data, err := io.ReadAll(f)
+	if err != nil {
+		return nil, sderr.WrapWith(err, "read file data error", fh.File)
+	}
+	return data, nil
+}
+
+func (c Context) HandleMultipartFormFile(files []string, handler func(file FileHeader) error) error {
+	form, err := c.MultipartForm()
+	if err != nil {
+		return sderr.Wrap(err, "parse multiple form error")
+	}
+	if len(files) <= 0 {
+		files = maps.Keys(form.File)
+	}
+	for _, fileField := range files {
+		fileParts := form.File[fileField]
+		for _, filePart := range fileParts {
+			if handler != nil {
+				if err := handler(FileHeader{
+					File:       fileField,
+					FileHeader: filePart,
+				}); err != nil {
+					return sderr.WrapWith(err, "handle upload file error", fileField)
+				}
+			}
+		}
+	}
+	return nil
 }
