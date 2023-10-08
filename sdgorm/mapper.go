@@ -7,11 +7,11 @@ import (
 	"strings"
 )
 
-func MustMapper[M any]() func(sdjson.Object) (M, error) {
-	return lo.Must(NewMapper[M]())
+func MustMapper[M any](asPrimitive bool) func(sdjson.Object) (M, error) {
+	return lo.Must(NewMapper[M](asPrimitive))
 }
 
-func NewMapper[M any]() (func(sdjson.Object) (M, error), error) {
+func NewMapper[M any](asPrimitive bool) (func(sdjson.Object) (M, error), error) {
 	var model M
 	s, err := ParseSchema(model, nil)
 	if err != nil {
@@ -27,16 +27,20 @@ func NewMapper[M any]() (func(sdjson.Object) (M, error), error) {
 			}
 			row1[jsonCol] = row.Get(f.DBName).Interface()
 		}
-		return sdjson.ObjectToStruct[M](row1.ToPrimitive())
+		if asPrimitive {
+			return sdjson.ObjectToStruct[M](row1.ToPrimitive())
+		} else {
+			return sdjson.ObjectToStruct[M](row1)
+		}
 	}, nil
 }
 
-func MustMapperToAny[M any]() func(sdjson.Object) (any, error) {
-	return lo.Must(NewMapperToAny[M]())
+func MustMapperToAny[M any](asPrimitive bool) func(sdjson.Object) (any, error) {
+	return lo.Must(NewMapperToAny[M](asPrimitive))
 }
 
-func NewMapperToAny[M any]() (func(sdjson.Object) (any, error), error) {
-	mapper0, err := NewMapper[M]()
+func NewMapperToAny[M any](asPrimitive bool) (func(sdjson.Object) (any, error), error) {
+	mapper0, err := NewMapper[M](asPrimitive)
 	if err != nil {
 		return nil, err
 	}

@@ -10,11 +10,11 @@ import (
 
 // 生成一个mapper，用于将一个json内容映射到一个MarkAsTable的结构体上
 
-func MustMapper[PROTO any]() func(sdjson.Object) (PROTO, error) {
-	return lo.Must(NewMapper[PROTO]())
+func MustMapper[PROTO any](asPrimitive bool) func(sdjson.Object) (PROTO, error) {
+	return lo.Must(NewMapper[PROTO](asPrimitive))
 }
 
-func NewMapper[PROTO any]() (func(sdjson.Object) (PROTO, error), error) {
+func NewMapper[PROTO any](asPrimitive bool) (func(sdjson.Object) (PROTO, error), error) {
 	var proto PROTO
 	t, err := scanProtoToTable(proto)
 	if err != nil {
@@ -31,7 +31,11 @@ func NewMapper[PROTO any]() (func(sdjson.Object) (PROTO, error), error) {
 			}
 			row1[jsonCol] = row.Get(dbCol).Interface()
 		}
-		return sdjson.ObjectToStruct[PROTO](row1.ToPrimitive())
+		if asPrimitive {
+			return sdjson.ObjectToStruct[PROTO](row1.ToPrimitive())
+		} else {
+			return sdjson.ObjectToStruct[PROTO](row1)
+		}
 	}, nil
 }
 
