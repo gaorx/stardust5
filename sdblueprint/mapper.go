@@ -31,7 +31,7 @@ func NewMapper[PROTO any]() (func(sdjson.Object) (PROTO, error), error) {
 			}
 			row1[jsonCol] = row.Get(dbCol).Interface()
 		}
-		return sdjson.ObjectToStruct[PROTO](row1)
+		return sdjson.ObjectToStruct[PROTO](row1.ToPrimitive())
 	}, nil
 }
 
