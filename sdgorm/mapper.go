@@ -28,7 +28,7 @@ func NewMapper[M any](asPrimitive bool) (func(sdjson.Object) (M, error), error) 
 			row1[jsonCol] = row.Get(f.DBName).Interface()
 		}
 		if asPrimitive {
-			return sdjson.ObjectToStruct[M](row1.ToPrimitive())
+			return sdjson.ObjectToStruct[M](row1.TryPrimitive())
 		} else {
 			return sdjson.ObjectToStruct[M](row1)
 		}

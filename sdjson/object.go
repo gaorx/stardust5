@@ -48,28 +48,14 @@ func (o Object) ShadowCopy() Object {
 	return o1
 }
 
-func (o Object) ToPrimitive() Object {
+func (o Object) TryPrimitive() Object {
 	if o == nil {
 		return nil
 	}
 
-	toPrimitiveValue := func(v any) any {
-		if v == nil {
-			return v
-		}
-		switch v1 := v.(type) {
-		case []any, Array, []string, []int:
-			return MarshalStringDef(v1, "[]")
-		case map[string]any, Object, map[string]string, map[string]int:
-			return MarshalStringDef(v1, "{}")
-		default:
-			return v
-		}
-	}
-
 	o1 := Object{}
 	for k, v := range o {
-		o1[k] = toPrimitiveValue(v)
+		o1[k] = TryPrimitive(v)
 	}
 	return o1
 }
