@@ -1,6 +1,7 @@
 package sdreq
 
 import (
+	"context"
 	"testing"
 
 	"github.com/gaorx/stardust5/sdjson"
@@ -9,6 +10,7 @@ import (
 
 func TestGet(t *testing.T) {
 	statusCode, body, err := GetForJson[sdjson.Object](
+		context.Background(),
 		nil,
 		"https://httpbin.org/get?k1=v1",
 		QueryParam("k2", 2),

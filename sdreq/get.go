@@ -1,15 +1,16 @@
 package sdreq
 
 import (
+	"context"
 	"github.com/gaorx/stardust5/sderr"
 	"github.com/imroc/req/v3"
 )
 
-func GetForResponse(client *req.Client, url string, opts ...RequestOption) (*req.Response, error) {
+func GetForResponse(ctx context.Context, client *req.Client, url string, opts ...RequestOption) (*req.Response, error) {
 	if client == nil {
 		client = req.DefaultClient()
 	}
-	request := applyOptions(client.R(), opts)
+	request := applyOptions(client.R().SetContext(ctx), opts)
 	response, err := request.Get(url)
 	if err != nil {
 		return nil, sderr.Wrap(err, "get response error")
@@ -17,8 +18,8 @@ func GetForResponse(client *req.Client, url string, opts ...RequestOption) (*req
 	return response, nil
 }
 
-func GetForBytes(client *req.Client, url string, opts ...RequestOption) (int, []byte, error) {
-	response, err := GetForResponse(client, url, opts...)
+func GetForBytes(ctx context.Context, client *req.Client, url string, opts ...RequestOption) (int, []byte, error) {
+	response, err := GetForResponse(ctx, client, url, opts...)
 	if err != nil {
 		return 0, nil, err
 	}
@@ -29,8 +30,8 @@ func GetForBytes(client *req.Client, url string, opts ...RequestOption) (int, []
 	return response.StatusCode, data, nil
 }
 
-func GetForText(client *req.Client, url string, opts ...RequestOption) (int, string, error) {
-	response, err := GetForResponse(client, url, opts...)
+func GetForText(ctx context.Context, client *req.Client, url string, opts ...RequestOption) (int, string, error) {
+	response, err := GetForResponse(ctx, client, url, opts...)
 	if err != nil {
 		return 0, "", err
 	}
@@ -41,9 +42,9 @@ func GetForText(client *req.Client, url string, opts ...RequestOption) (int, str
 	return response.StatusCode, data, nil
 }
 
-func GetForJson[R any](client *req.Client, url string, opts ...RequestOption) (int, R, error) {
+func GetForJson[R any](ctx context.Context, client *req.Client, url string, opts ...RequestOption) (int, R, error) {
 	var r R
-	response, err := GetForResponse(client, url, opts...)
+	response, err := GetForResponse(ctx, client, url, opts...)
 	if err != nil {
 		return 0, r, err
 	}
