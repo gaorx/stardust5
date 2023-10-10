@@ -42,3 +42,10 @@ func Headers(headers map[string]string) RequestOption {
 		return request
 	}
 }
+
+func EnableDump() RequestOption {
+	return func(request *req.Request) *req.Request {
+		request.EnableDump()
+		return request
+	}
+}
