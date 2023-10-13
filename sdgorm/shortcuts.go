@@ -149,15 +149,11 @@ func ModifyAndTake[T any](tx *gorm.DB, modifier func(T) T, q any, args ...any) (
 	return Take[T](tx, append([]any{q}, args...)...)
 }
 
-func UpdateColumns(tx *gorm.DB, model any, colVals map[string]any, q any, args ...any) (int64, error) {
+func UpdateColumns[T any](tx *gorm.DB, colVals map[string]any, q any, args ...any) (int64, error) {
 	if len(colVals) <= 0 {
 		return 0, nil
 	}
-	if tableName, ok := model.(string); ok {
-		tx = tx.Table(tableName)
-	} else {
-		tx = tx.Model(model)
-	}
+	tx = tx.Model(lo.Empty[T]())
 	dbr := tx.Where(q, args...).Updates(colVals)
 	if dbr.Error != nil {
 		return 0, dbr.Error
@@ -166,7 +162,7 @@ func UpdateColumns(tx *gorm.DB, model any, colVals map[string]any, q any, args .
 }
 
 func UpdateColumnsAndTake[T any](tx *gorm.DB, colVals map[string]any, q any, args ...any) (T, error) {
-	_, err := UpdateColumns(tx, lo.Empty[T](), colVals, q, args...)
+	_, err := UpdateColumns[T](tx, colVals, q, args...)
 	if err != nil {
 		return lo.Empty[T](), err
 	}
