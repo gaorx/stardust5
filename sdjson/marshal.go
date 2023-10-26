@@ -2,6 +2,7 @@ package sdjson
 
 import (
 	"encoding/json"
+	"github.com/samber/lo"
 )
 
 // bytes
@@ -54,14 +55,36 @@ func MarshalPretty(v any) string {
 	return MarshalIndentStringDef(v, "", "  ", "")
 }
 
+// typed
+
+func UnmarshalTyped[T any](raw []byte) (T, error) {
+	var t T
+	if err := json.Unmarshal(raw, &t); err != nil {
+		return lo.Empty[T](), err
+	}
+	return t, nil
+}
+
+func UnmarshalStringTyped[T any](j string) (T, error) {
+	return UnmarshalTyped[T]([]byte(j))
+}
+
+func UnmarshalTypedDef[T any](raw []byte, def T) T {
+	if t, err := UnmarshalTyped[T](raw); err != nil {
+		return def
+	} else {
+		return t
+	}
+}
+
+func UnmarshalStringTypedDef[T any](j string, def T) T {
+	return UnmarshalTypedDef[T]([]byte(j), def)
+}
+
 // value
 
 func UnmarshalValue(raw []byte) (Value, error) {
-	var v Value
-	if err := json.Unmarshal(raw, &v); err != nil {
-		return V(nil), err
-	}
-	return v, nil
+	return UnmarshalTyped[Value](raw)
 }
 
 func UnmarshalValueString(s string) (Value, error) {
