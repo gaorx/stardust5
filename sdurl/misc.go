@@ -2,6 +2,7 @@ package sdurl
 
 import (
 	"fmt"
+	"github.com/gaorx/stardust5/sdstrings"
 	"strings"
 )
 
@@ -24,9 +25,11 @@ func CompleteHttp(urlStr string, defaultScheme string) string {
 	if strings.HasPrefix(urlStr, "http://") || strings.HasPrefix(urlStr, "https://") {
 		return urlStr
 	}
-	defaultScheme = strings.TrimSuffix(defaultScheme, "//")
-	defaultScheme = strings.TrimSuffix(defaultScheme, ":")
-	return fmt.Sprintf("%s://%s", defaultScheme, strings.TrimPrefix(urlStr, "//"))
+	return fmt.Sprintf(
+		"%s://%s",
+		sdstrings.TrimSuffixes(defaultScheme, "//", ":"),
+		sdstrings.TrimPrefixes(urlStr, "//", "/"),
+	)
 }
 
 func validOptionalPort(port string) bool {
