@@ -1,6 +1,7 @@
 package sdurl
 
 import (
+	"fmt"
 	"strings"
 )
 
@@ -17,6 +18,15 @@ func SplitHostPort(hostPort string) (host, port string) {
 	}
 
 	return
+}
+
+func CompleteHttp(urlStr string, defaultScheme string) string {
+	if strings.HasPrefix(urlStr, "http://") || strings.HasPrefix(urlStr, "https://") {
+		return urlStr
+	}
+	defaultScheme = strings.TrimSuffix(defaultScheme, "//")
+	defaultScheme = strings.TrimSuffix(defaultScheme, ":")
+	return fmt.Sprintf("%s://%s", defaultScheme, strings.TrimPrefix(urlStr, "//"))
 }
 
 func validOptionalPort(port string) bool {
