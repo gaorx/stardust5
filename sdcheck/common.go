@@ -7,7 +7,7 @@ import (
 
 // true/false
 
-func True(b bool, message any) CheckerFunc {
+func True(b bool, message any) Func {
 	return func() error {
 		if !b {
 			return errorOf(message)
@@ -16,7 +16,7 @@ func True(b bool, message any) CheckerFunc {
 	}
 }
 
-func False(b bool, message any) CheckerFunc {
+func False(b bool, message any) Func {
 	return func() error {
 		if b {
 			return errorOf(message)
@@ -27,7 +27,7 @@ func False(b bool, message any) CheckerFunc {
 
 // All/And/Or
 
-func Not(c Checker, message any) CheckerFunc {
+func Not(c Checker, message any) Func {
 	return func() error {
 		if c == nil {
 			return errorOf(message)
@@ -40,9 +40,9 @@ func Not(c Checker, message any) CheckerFunc {
 	}
 }
 
-func All(checkers ...Checker) CheckerFunc {
+func All(checkers ...Checker) Func {
 	if len(checkers) == 0 {
-		return CheckerFunc(nil)
+		return Func(nil)
 	}
 	if len(checkers) == 1 {
 		return funcOf(checkers[0])
@@ -59,9 +59,9 @@ func All(checkers ...Checker) CheckerFunc {
 	}
 }
 
-func And(checkers []Checker, message any) CheckerFunc {
+func And(checkers []Checker, message any) Func {
 	if len(checkers) == 0 {
-		return CheckerFunc(nil)
+		return Func(nil)
 	}
 	if len(checkers) == 1 {
 		return funcOf(checkers[0])
@@ -78,9 +78,9 @@ func And(checkers []Checker, message any) CheckerFunc {
 	}
 }
 
-func Or(checkers []Checker, message any) CheckerFunc {
+func Or(checkers []Checker, message any) Func {
 	if len(checkers) == 0 {
-		return CheckerFunc(nil)
+		return Func(nil)
 	}
 	if len(checkers) == 1 {
 		return funcOf(checkers[0])
@@ -99,18 +99,18 @@ func Or(checkers []Checker, message any) CheckerFunc {
 
 // if
 
-func If(enabled bool, checker Checker) CheckerFunc {
+func If(enabled bool, checker Checker) Func {
 	if !enabled {
-		return CheckerFunc(nil)
+		return Func(nil)
 	}
 	return funcOf(checker)
 }
 
 // for
 
-type ForFunc[T any] func() (T, error)
+type FuncFor[T any] func() (T, error)
 
-func For[T any](f ForFunc[T], ptr *T) CheckerFunc {
+func For[T any](f FuncFor[T], ptr *T) Func {
 	return func() error {
 		r, err := f()
 		if err != nil {
@@ -125,7 +125,7 @@ func For[T any](f ForFunc[T], ptr *T) CheckerFunc {
 
 // other
 
-func Required(v any, message any) CheckerFunc {
+func Required(v any, message any) Func {
 	return func() error {
 		v := sdreflect.ValueOf(v)
 		k := v.Kind()
@@ -145,7 +145,7 @@ func Required(v any, message any) CheckerFunc {
 	}
 }
 
-func Len(v any, minLen, maxLen int, message any) CheckerFunc {
+func Len(v any, minLen, maxLen int, message any) Func {
 	if maxLen < minLen {
 		minLen, maxLen = maxLen, minLen
 	}

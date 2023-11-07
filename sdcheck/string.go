@@ -5,7 +5,7 @@ import (
 	"strings"
 )
 
-func MatchRegexp(s, pattern string, message any) CheckerFunc {
+func MatchRegexp(s, pattern string, message any) Func {
 	return func() error {
 		if matched, err := regexp.MatchString(pattern, s); err != nil {
 			return errorOf(message)
@@ -19,7 +19,7 @@ func MatchRegexp(s, pattern string, message any) CheckerFunc {
 	}
 }
 
-func MatchRegexpPattern(s string, pattern *regexp.Regexp, message any) CheckerFunc {
+func MatchRegexpPattern(s string, pattern *regexp.Regexp, message any) Func {
 	return func() error {
 		if matched := pattern.MatchString(s); matched {
 			return nil
@@ -29,7 +29,7 @@ func MatchRegexpPattern(s string, pattern *regexp.Regexp, message any) CheckerFu
 	}
 }
 
-func HasSub(s string, substr string, message any) CheckerFunc {
+func HasSub(s string, substr string, message any) Func {
 	return func() error {
 		if !strings.Contains(s, substr) {
 			return errorOf(message)
@@ -38,7 +38,7 @@ func HasSub(s string, substr string, message any) CheckerFunc {
 	}
 }
 
-func HasPrefix(s string, prefix string, message any) CheckerFunc {
+func HasPrefix(s string, prefix string, message any) Func {
 	return func() error {
 		if !strings.HasPrefix(s, prefix) {
 			return errorOf(message)
@@ -47,7 +47,7 @@ func HasPrefix(s string, prefix string, message any) CheckerFunc {
 	}
 }
 
-func HasSuffix(s string, suffix string, message any) CheckerFunc {
+func HasSuffix(s string, suffix string, message any) Func {
 	return func() error {
 		if !strings.HasSuffix(s, suffix) {
 			return errorOf(message)

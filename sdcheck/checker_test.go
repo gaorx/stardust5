@@ -9,11 +9,11 @@ import (
 
 func TestAll(t *testing.T) {
 	// func
-	assert.NoError(t, CheckerFunc(nil).Check())
-	assert.NoError(t, CheckerFunc(func() error {
+	assert.NoError(t, Func(nil).Check())
+	assert.NoError(t, Func(func() error {
 		return nil
 	}).Check())
-	assert.Error(t, CheckerFunc(func() error {
+	assert.Error(t, Func(func() error {
 		return sderr.New("FUNC")
 	}).Check())
 

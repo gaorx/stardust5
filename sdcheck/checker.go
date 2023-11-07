@@ -8,9 +8,9 @@ type Checker interface {
 
 // checker func
 
-type CheckerFunc func() error
+type Func func() error
 
-func (f CheckerFunc) Check() error {
+func (f Func) Check() error {
 	if f == nil {
 		return nil
 	}
