@@ -113,6 +113,27 @@ func TestAll(t *testing.T) {
 	assert.Equal(t, 0, a)
 	assert.Equal(t, 0, b)
 
+	// lazy
+	a, b = 0, 0
+	assert.NoError(t, All(
+		For(func() (int, error) { return 3, nil }, &a),
+		Lazy(func() Checker {
+			// 在lazy中可以使用被上一个checker修改过的a，不放在lazy中则不行
+			return For(func() (int, error) { return 7 + a, nil }, &b)
+		}),
+	).Check())
+	assert.Equal(t, 3, a)
+	assert.Equal(t, 10, b)
+	a, b = 0, 0
+	assert.Error(t, All(
+		For(func() (int, error) { return 3, nil }, &a),
+		Lazy(func() Checker {
+			return For(func() (int, error) { return 7 + a, sderr.New("XX") }, &b)
+		}),
+	).Check())
+	assert.Equal(t, a, 3)
+	assert.Equal(t, b, 0)
+
 	// required
 	assert.Error(t, Required(nil, "REQUIRED").Check())
 	assert.Error(t, Required((func() int)(nil), "REQUIRED").Check())

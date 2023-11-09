@@ -97,6 +97,14 @@ func Or(checkers []Checker, message any) Func {
 	}
 }
 
+// lazy
+
+type Lazy func() Checker
+
+func (l Lazy) Check() error {
+	return l().Check()
+}
+
 // if
 
 func If(enabled bool, checker Checker) Func {
