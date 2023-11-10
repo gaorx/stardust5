@@ -6,6 +6,7 @@ import (
 	"github.com/gaorx/stardust5/sderr"
 	"github.com/gaorx/stardust5/sdsqlparser"
 	"gorm.io/gorm"
+	"slices"
 	"strings"
 )
 
@@ -82,6 +83,35 @@ type PagingResult[T any] struct {
 	PageSize  int
 	PageNum   int
 	PageTotal int
+}
+
+func DoPage[T any](rows []T, page Page) *PagingResult[T] {
+	limit, offset := page.LimitOffset()
+	start, end := offset, offset+limit
+	numRows := len(rows)
+	if start > end {
+		start, end = end, start
+	}
+	if start > numRows {
+		start = numRows
+	}
+	if start < 0 {
+		start = 0
+	}
+
+	if end > numRows {
+		end = numRows
+	}
+	if end < 0 {
+		end = 0
+	}
+	return &PagingResult[T]{
+		Rows:      slices.Clone(rows[start:end]),
+		NumRows:   numRows,
+		PageSize:  limit,
+		PageNum:   page.Num,
+		PageTotal: (numRows + limit - 1) / limit,
+	}
 }
 
 func NewPagingResultTo[T, R any](pr *PagingResult[T], rows []R) *PagingResult[R] {
