@@ -85,7 +85,7 @@ type PagingResult[T any] struct {
 	PageTotal int
 }
 
-func DoPage[T any](rows []T, page Page) *PagingResult[T] {
+func PageRows[T any](rows []T, page Page) *PagingResult[T] {
 	limit, offset := page.LimitOffset()
 	start, end := offset, offset+limit
 	numRows := len(rows)
