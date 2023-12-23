@@ -49,7 +49,7 @@ func JSON[T any](loc string) (T, error) {
 	return r, nil
 }
 
-func TOML[T any](loc string, v any) (T, error) {
+func TOML[T any](loc string) (T, error) {
 	var empty, r T
 	data, err := Bytes(loc)
 	if err != nil {
@@ -62,7 +62,7 @@ func TOML[T any](loc string, v any) (T, error) {
 	return r, nil
 }
 
-func YAML[T any](loc string, v any) (T, error) {
+func YAML[T any](loc string) (T, error) {
 	var empty, r T
 	data, err := Bytes(loc)
 	if err != nil {
