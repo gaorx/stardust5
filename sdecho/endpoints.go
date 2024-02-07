@@ -90,6 +90,16 @@ type CrudAPI[T Record[ID], ID RecordID, REQ BaseRequest] struct {
 	Middlewares []echo.MiddlewareFunc
 }
 
+func (fr *FindResult[T]) ToResult(err error) *Result {
+	return ResultOf(fr.Data, err).WithFields(map[string]any{
+		"request":   fr.Request,
+		"page":      fr.PageNum,
+		"pageSize":  fr.PageSize,
+		"pageTotal": fr.PageTotal,
+		"numRows":   fr.NumRows,
+	})
+}
+
 func (p WebPage) ToEndpoint() Endpoint {
 	if p.Method == "" {
 		p.Method = http.MethodGet
@@ -152,13 +162,7 @@ func (api FindAPI[T, ID, REQ]) ToEndpoint() Endpoint {
 				req.SetFlags(sdstrings.SplitNonempty(flagsText, ",", true))
 			}
 			fr, err := api.Func(ec, req)
-			return ResultOf(fr.Data, err).WithFields(map[string]any{
-				"request":   req,
-				"page":      fr.PageNum,
-				"pageSize":  fr.PageSize,
-				"pageTotal": fr.PageTotal,
-				"numRows":   fr.NumRows,
-			})
+			return fr.ToResult(err)
 		},
 		Bare:        api.Bare,
 		Middlewares: api.Middlewares,
