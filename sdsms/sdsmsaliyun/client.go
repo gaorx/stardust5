@@ -17,10 +17,10 @@ type Client struct {
 }
 
 type Config struct {
-	Endpoint        string
-	AccessId        string
-	AccessKey       string
-	DefaultSignName string
+	Endpoint        string `json:"endpoint" toml:"endpoint" yaml:"endpoint"`
+	AccessId        string `json:"access_id" toml:"access_id" yaml:"access_id"`
+	AccessKey       string `json:"access_key" toml:"access_key" yaml:"access_key"`
+	DefaultSignName string `json:"default_sign_name" toml:"default_sign_name" yaml:"default_sign_name"`
 }
 
 var _ sdsms.Interface = &Client{}
