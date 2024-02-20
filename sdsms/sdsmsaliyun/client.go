@@ -68,11 +68,15 @@ func (c *Client) Send(ctx context.Context, req *sdsms.SendRequest) error {
 		if msg.SignName == "" {
 			msg.SignName = c.config.DefaultSignName
 		}
+		paramMap, ok := msg.ParamToMap()
+		if !ok {
+			return sderr.New("invalid message param")
+		}
 		aliReq := &dysmsapi.SendSmsRequest{
 			PhoneNumbers:  tea.String(msg.Phone),
 			SignName:      tea.String(msg.SignName),
 			TemplateCode:  tea.String(req1.TemplateId),
-			TemplateParam: messageToJson(&msg),
+			TemplateParam: messageToJson(paramMap),
 		}
 		aliResp, err := c.client.SendSms(aliReq)
 		return newErrorForSendSms(aliResp, err)
@@ -85,6 +89,11 @@ func (c *Client) Send(ctx context.Context, req *sdsms.SendRequest) error {
 			}
 			if msg1.SignName == "" {
 				msg1.SignName = c.config.DefaultSignName
+			}
+			if paramMap, ok := msg.ParamToMap(); !ok {
+				return sderr.New("invalid message param")
+			} else {
+				msg1.Param = paramMap
 			}
 			msgs1 = append(msgs1, msg1)
 		}
@@ -99,10 +108,10 @@ func (c *Client) Send(ctx context.Context, req *sdsms.SendRequest) error {
 	}
 }
 
-func messageToJson(msg *sdsms.Message) *string {
-	if len(msg.Param) <= 0 {
+func messageToJson(paramMap map[string]string) *string {
+	if len(paramMap) <= 0 {
 		return nil
 	}
-	j := lo.Must(sdjson.MarshalString(msg.Param))
+	j := lo.Must(sdjson.MarshalString(paramMap))
 	return tea.String(j)
 }
