@@ -13,7 +13,7 @@ import (
 type Format string
 
 type Options struct {
-	Level     string   `json:"level" toml:"format" yaml:"format"`
+	Level     string   `json:"level" toml:"level" yaml:"level"`
 	Format    string   `json:"format" toml:"format" yaml:"format"`
 	Outputs   []string `json:"output" toml:"output" yaml:"output"`
 	AddSource bool     `json:"add_source" toml:"add_source" yaml:"add_source"`
