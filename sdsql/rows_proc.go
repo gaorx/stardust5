@@ -96,15 +96,25 @@ type Aggregator[ROW any, ON comparable, COMPLEMENT any] struct {
 	CompleteInplace func(ROW, map[ON]COMPLEMENT)
 }
 
+func (a Aggregator[ROW, ON, COMPLEMENT]) Empty() bool {
+	return a.Collect == nil && a.Fetch == nil && a.Complete == nil && a.CompleteInplace == nil
+}
+
+func (a Aggregator[ROW, ON, COMPLEMENT]) If(enabled bool) Aggregator[ROW, ON, COMPLEMENT] {
+	if enabled {
+		return a
+	} else {
+		return Aggregator[ROW, ON, COMPLEMENT]{}
+	}
+}
+
 func (a Aggregator[ROW, ON, COMPLEMENT]) ProcRows(rows []ROW) ([]ROW, error) {
-	if a.Collect == nil {
-		return nil, sderr.New("aggregator.collect is nil")
+	if a.Empty() {
+		return rows, nil
 	}
-	if a.Fetch == nil {
-		return nil, sderr.New("aggregator.fetch is nil")
-	}
-	if a.Complete == nil && a.CompleteInplace == nil {
-		return nil, sderr.New("aggregator.complete is nil")
+
+	if a.Collect == nil || a.Fetch == nil || (a.Complete == nil && a.CompleteInplace == nil) {
+		return nil, sderr.New("invalid aggregator")
 	}
 
 	if len(rows) <= 0 {
