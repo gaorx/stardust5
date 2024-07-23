@@ -13,9 +13,13 @@ func PageApplier(p sdsql.Page) func(*bun.SelectQuery) *bun.SelectQuery {
 	}
 }
 
-func SelectPaging[ROW any](ctx context.Context, db bun.IDB, p sdsql.Page, qfn func(*bun.SelectQuery) *bun.SelectQuery) (*sdsql.PagingResult[ROW], error) {
+func SelectPaging[ROW any](ctx context.Context, db bun.IDB, p sdsql.Page, qfn func(*bun.SelectQuery) *bun.SelectQuery, postProcs ...sdsql.RowsProc[ROW]) (*sdsql.PagingResult[ROW], error) {
 	var rows []ROW
 	numRows, err := db.NewSelect().Apply(qfn).Apply(PageApplier(p)).Apply(modelApplier[*bun.SelectQuery, ROW]()).ScanAndCount(ctx, &rows)
+	if err != nil {
+		return nil, err
+	}
+	rows, err = sdsql.ProcRows(rows, postProcs...)
 	if err != nil {
 		return nil, err
 	}

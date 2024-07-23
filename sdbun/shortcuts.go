@@ -5,15 +5,16 @@ import (
 	"database/sql"
 	"github.com/gaorx/stardust5/sdreflect"
 	"github.com/gaorx/stardust5/sdsql"
+	"github.com/samber/lo"
 	"github.com/uptrace/bun"
 	"reflect"
 )
 
-func Transaction(ctx context.Context, db bun.IDB, action func(context.Context, bun.Tx) error, opts *sql.TxOptions) error {
+func Tx(ctx context.Context, db bun.IDB, action func(context.Context, bun.Tx) error, opts *sql.TxOptions) error {
 	return db.RunInTx(ctx, opts, action)
 }
 
-func TransactionFor[R any](ctx context.Context, db bun.IDB, action func(context.Context, bun.Tx) (R, error), opts *sql.TxOptions) (R, error) {
+func TxFor[R any](ctx context.Context, db bun.IDB, action func(context.Context, bun.Tx) (R, error), opts *sql.TxOptions) (R, error) {
 	var r R
 	err := db.RunInTx(ctx, opts, func(ctx context.Context, tx bun.Tx) error {
 		r0, err := action(ctx, tx)
@@ -50,16 +51,16 @@ func Delete[ROW any](ctx context.Context, db bun.IDB, qfn func(query *bun.Delete
 	return sdsql.ResultOf(sr), nil
 }
 
-func SelectMany[ROW any](ctx context.Context, db bun.IDB, qfn func(*bun.SelectQuery) *bun.SelectQuery) ([]ROW, error) {
+func SelectMany[ROW any](ctx context.Context, db bun.IDB, qfn func(*bun.SelectQuery) *bun.SelectQuery, postProcs ...sdsql.RowsProc[ROW]) ([]ROW, error) {
 	var r []ROW
 	err := db.NewSelect().Apply(qfn).Apply(modelApplier[*bun.SelectQuery, ROW]()).Scan(ctx, &r)
 	if err != nil {
 		return nil, err
 	}
-	return r, nil
+	return sdsql.ProcRows(r, postProcs...)
 }
 
-func SelectFirst[ROW any](ctx context.Context, db bun.IDB, qfn func(*bun.SelectQuery) *bun.SelectQuery) (ROW, error) {
+func SelectFirst[ROW any](ctx context.Context, db bun.IDB, qfn func(*bun.SelectQuery) *bun.SelectQuery, postProcs ...sdsql.RowsProc[ROW]) (ROW, error) {
 	t := sdreflect.T[ROW]()
 	if isPtrToStruct(t) {
 		dest := reflect.New(t.Elem()).Interface()
@@ -68,7 +69,7 @@ func SelectFirst[ROW any](ctx context.Context, db bun.IDB, qfn func(*bun.SelectQ
 			var zero ROW
 			return zero, err
 		}
-		return dest.(ROW), nil
+		return sdsql.ProcRow(dest.(ROW), postProcs...)
 	} else {
 		var r ROW
 		err := db.NewSelect().Apply(qfn).Apply(modelApplier[*bun.SelectQuery, ROW]()).Scan(ctx, &r)
@@ -76,20 +77,20 @@ func SelectFirst[ROW any](ctx context.Context, db bun.IDB, qfn func(*bun.SelectQ
 			var zero ROW
 			return zero, err
 		}
-		return r, nil
+		return sdsql.ProcRow(r, postProcs...)
 	}
 }
 
-func SelectManyRaw[ROW any](ctx context.Context, db bun.IDB, q string, args []any) ([]ROW, error) {
+func SelectManyRaw[ROW any](ctx context.Context, db bun.IDB, q string, args []any, postProcs ...sdsql.RowsProc[ROW]) ([]ROW, error) {
 	var r []ROW
 	err := db.NewRaw(q, args...).Scan(ctx, &r)
 	if err != nil {
 		return nil, err
 	}
-	return r, nil
+	return sdsql.ProcRows(r, postProcs...)
 }
 
-func SelectFirstRaw[ROW any](ctx context.Context, db bun.IDB, q string, args []any) (ROW, error) {
+func SelectFirstRaw[ROW any](ctx context.Context, db bun.IDB, q string, args []any, postProcs ...sdsql.RowsProc[ROW]) (ROW, error) {
 	t := sdreflect.T[ROW]()
 	if isPtrToStruct(t) {
 		dest := reflect.New(t.Elem()).Interface()
@@ -98,7 +99,7 @@ func SelectFirstRaw[ROW any](ctx context.Context, db bun.IDB, q string, args []a
 			var zero ROW
 			return zero, err
 		}
-		return dest.(ROW), nil
+		return sdsql.ProcRow(dest.(ROW), postProcs...)
 	} else {
 		var r ROW
 		err := db.NewRaw(q, args...).Scan(ctx, &r)
@@ -106,7 +107,7 @@ func SelectFirstRaw[ROW any](ctx context.Context, db bun.IDB, q string, args []a
 			var zero ROW
 			return zero, err
 		}
-		return r, nil
+		return sdsql.ProcRow(r, postProcs...)
 	}
 }
 
@@ -130,14 +131,33 @@ func Exists[ROW any](ctx context.Context, db bun.IDB, qfn func(*bun.SelectQuery)
 	return exists, nil
 }
 
-func SelectManyAndCount[ROW any](ctx context.Context, db bun.IDB, qfn func(*bun.SelectQuery) *bun.SelectQuery) ([]ROW, int64, error) {
+func SelectManyAndCount[ROW any](ctx context.Context, db bun.IDB, qfn func(*bun.SelectQuery) *bun.SelectQuery, postProcs ...sdsql.RowsProc[ROW]) ([]ROW, int64, error) {
 	var r []ROW
 	n, err := db.NewSelect().Apply(qfn).Apply(modelApplier[*bun.SelectQuery, ROW]()).ScanAndCount(ctx, &r)
 	if err != nil {
-		var zero []ROW
-		return zero, 0, err
+		return nil, 0, err
+	}
+	r, err = sdsql.ProcRows(r, postProcs...)
+	if err != nil {
+		return nil, 0, err
 	}
 	return r, int64(n), nil
+}
+
+func SelectMap[ROW any, K comparable, V any](ctx context.Context, db bun.IDB, qfn func(*bun.SelectQuery) *bun.SelectQuery, transform func(ROW) (K, V), postProcs ...sdsql.RowsProc[ROW]) (map[K]V, error) {
+	rows, err := SelectMany[ROW](ctx, db, qfn, postProcs...)
+	if err != nil {
+		return nil, err
+	}
+	return lo.SliceToMap(rows, transform), nil
+}
+
+func SelectMapRaw[ROW any, K comparable, V any](ctx context.Context, db bun.IDB, q string, args []any, transform func(ROW) (K, V), postProcs ...sdsql.RowsProc[ROW]) (map[K]V, error) {
+	rows, err := SelectManyRaw[ROW](ctx, db, q, args, postProcs...)
+	if err != nil {
+		return nil, err
+	}
+	return lo.SliceToMap(rows, transform), nil
 }
 
 type modelQuery[Q any] interface {
