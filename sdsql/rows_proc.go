@@ -13,6 +13,7 @@ var (
 	_ RowsProc[struct{}] = (RowsProcFunc[struct{}])(nil)
 	_ RowsProc[struct{}] = (Completer[struct{}])(nil)
 	_ RowsProc[struct{}] = (InplaceCompleter[struct{}])(nil)
+	_ RowsProc[struct{}] = (Filter[struct{}])(nil)
 	_ RowsProc[struct{}] = Aggregator[struct{}, string, struct{}]{}
 )
 
@@ -87,6 +88,24 @@ func (c InplaceCompleter[ROW]) ProcRows(rows []ROW) ([]ROW, error) {
 		c(row)
 	}
 	return rows, nil
+}
+
+type Filter[ROW any] func(ROW) bool
+
+func (f Filter[ROW]) ProcRows(rows []ROW) ([]ROW, error) {
+	if f == nil {
+		return rows, nil
+	}
+	if len(rows) <= 0 {
+		return rows, nil
+	}
+	newRows := make([]ROW, 0)
+	for _, row := range rows {
+		if f(row) {
+			newRows = append(newRows, row)
+		}
+	}
+	return newRows, nil
 }
 
 type Aggregator[ROW any, ON comparable, COMPLEMENT any] struct {
