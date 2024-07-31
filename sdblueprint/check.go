@@ -194,7 +194,11 @@ func (m *module) checkSelf() error {
 			}
 		case *ModuleTaskGenerateGormModel:
 			if t1.Dirname == "" {
-				return sderr.New("no dir in generate model task")
+				return sderr.New("no dir in generate GORM model task")
+			}
+		case *ModuleTaskGenerateBunModel:
+			if t1.Dirname == "" {
+				return sderr.New("no dir in generate BUN model task")
 			}
 		case *ModuleTaskGenerateMysqlDDL:
 			if t1.Dirname == "" {

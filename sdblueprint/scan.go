@@ -198,6 +198,11 @@ func scanModuleProto(bp *Blueprint, _ reflect.Value, st structType, mark markedF
 					Groups:           attrs.First([]string{"groups", "group"}).AsSlice(","),
 					QueryWithContext: attrs.Get("query_with_context").AsBool(false),
 				})
+			} else if mark1 == markAsGenerateBunModel {
+				newModule.addTask(&ModuleTaskGenerateBunModel{
+					Dirname: attrs.Get("dir").AsStr(),
+					Groups:  attrs.First([]string{"groups", "group"}).AsSlice(","),
+				})
 			} else if mark1 == markAsGenerateMysqlDDL {
 				newModule.addTask(&ModuleTaskGenerateMysqlDDL{
 					Dirname: attrs.Get("dir").AsStr(),

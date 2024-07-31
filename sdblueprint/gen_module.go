@@ -48,6 +48,16 @@ func (g ForModule) GenerateTo(buffs *sdcodegen.Buffers, bp *Blueprint) error {
 				}).GenerateTo(buffs, getSub(bp, t1.Groups)); err != nil {
 					return sderr.WithStack(err)
 				}
+			case *ModuleTaskGenerateBunModel:
+				dirname := t1.Dirname
+				if dirname == "" {
+					return sderr.NewWith("no dir in generate BUN model task", m.Id())
+				}
+				if err := (BunModel{
+					FileForModel: filepath.Join(dirname, "models.gen.go"),
+				}).GenerateTo(buffs, getSub(bp, t1.Groups)); err != nil {
+					return sderr.WithStack(err)
+				}
 			case *ModuleTaskGenerateMysqlDDL:
 				dirname := t1.Dirname
 				if dirname == "" {

@@ -25,6 +25,7 @@ type (
 type (
 	MarkAsGenerateSkeleton  int
 	MarkAsGenerateGormModel int
+	MarkAsGenerateBunModel  int
 	MarkAsGenerateMysqlDDL  int
 )
 
@@ -41,6 +42,7 @@ var (
 	markAsInlineQuery       = sdreflect.T[MarkAsInlineQuery]()
 	markAsGenerateSkeleton  = sdreflect.T[MarkAsGenerateSkeleton]()
 	markAsGenerateGormModel = sdreflect.T[MarkAsGenerateGormModel]()
+	markAsGenerateBunModel  = sdreflect.T[MarkAsGenerateBunModel]()
 	markAsGenerateMysqlDDL  = sdreflect.T[MarkAsGenerateMysqlDDL]()
 
 	// struct mark
@@ -64,6 +66,7 @@ var (
 	moduleTaskMarks = markSet{
 		markAsGenerateSkeleton,
 		markAsGenerateGormModel,
+		markAsGenerateBunModel,
 		markAsGenerateMysqlDDL,
 	}
 

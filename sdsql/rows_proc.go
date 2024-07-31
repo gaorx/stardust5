@@ -109,26 +109,21 @@ func (f Filter[ROW]) ProcRows(rows []ROW) ([]ROW, error) {
 }
 
 type Aggregator[ROW any, ON comparable, COMPLEMENT any] struct {
+	disabled        bool
 	Collect         func(ROW) []ON
 	Fetch           func([]ON) (map[ON]COMPLEMENT, error)
 	Complete        func(ROW, map[ON]COMPLEMENT) (ROW, error)
 	CompleteInplace func(ROW, map[ON]COMPLEMENT)
 }
 
-func (a Aggregator[ROW, ON, COMPLEMENT]) Empty() bool {
-	return a.Collect == nil && a.Fetch == nil && a.Complete == nil && a.CompleteInplace == nil
-}
-
 func (a Aggregator[ROW, ON, COMPLEMENT]) If(enabled bool) Aggregator[ROW, ON, COMPLEMENT] {
-	if enabled {
-		return a
-	} else {
-		return Aggregator[ROW, ON, COMPLEMENT]{}
-	}
+	a1 := a
+	a1.disabled = !enabled
+	return a1
 }
 
 func (a Aggregator[ROW, ON, COMPLEMENT]) ProcRows(rows []ROW) ([]ROW, error) {
-	if a.Empty() {
+	if a.disabled {
 		return rows, nil
 	}
 

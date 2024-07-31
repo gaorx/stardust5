@@ -25,6 +25,11 @@ type ModuleTaskGenerateGormModel struct {
 	QueryWithContext bool     `json:"query_with_context,omitempty"`
 }
 
+type ModuleTaskGenerateBunModel struct {
+	Dirname string   `json:"dir,omitempty"`
+	Groups  []string `json:"groups,omitempty"`
+}
+
 type ModuleTaskGenerateMysqlDDL struct {
 	Dirname string   `json:"dir,omitempty"`
 	Groups  []string `json:"groups,omitempty"`
@@ -34,6 +39,7 @@ var (
 	_ Module     = &module{}
 	_ moduleTask = &ModuleTaskGenerateSkeleton{}
 	_ moduleTask = &ModuleTaskGenerateGormModel{}
+	_ moduleTask = &ModuleTaskGenerateBunModel{}
 	_ moduleTask = &ModuleTaskGenerateMysqlDDL{}
 )
 
@@ -101,6 +107,15 @@ func (t *ModuleTaskGenerateGormModel) clone() any {
 	return &t1
 }
 
+func (t *ModuleTaskGenerateBunModel) clone() any {
+	if t == nil {
+		return nil
+	}
+	t1 := *t
+	t1.Groups = slices.Clone(t.Groups)
+	return &t1
+}
+
 func (t *ModuleTaskGenerateMysqlDDL) clone() any {
 	if t == nil {
 		return nil
@@ -122,6 +137,13 @@ func (t *ModuleTaskGenerateGormModel) ToJsonObject() sdjson.Object {
 		return nil
 	}
 	return moduleTaskToJson(t, "generate_gorm_model")
+}
+
+func (t *ModuleTaskGenerateBunModel) ToJsonObject() sdjson.Object {
+	if t == nil {
+		return nil
+	}
+	return moduleTaskToJson(t, "generate_bun_model")
 }
 
 func (t *ModuleTaskGenerateMysqlDDL) ToJsonObject() sdjson.Object {
